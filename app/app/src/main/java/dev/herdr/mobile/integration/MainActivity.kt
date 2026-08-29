@@ -37,6 +37,7 @@ import androidx.lifecycle.lifecycleScope
 import dev.herdr.mobile.features.chat.data.PaneRepository
 import dev.herdr.mobile.core.navigation.AppDestination
 import dev.herdr.mobile.core.navigation.EmailRoute
+import dev.herdr.mobile.core.navigation.HomepageRoute
 import dev.herdr.mobile.core.navigation.parseDestinationIntent
 import dev.herdr.mobile.core.data.Settings
 import dev.herdr.mobile.features.chat.net.CompanionClient
@@ -132,9 +133,14 @@ class MainActivity : ComponentActivity() {
                     }
                 } else if (destination == AppDestination.CHAT_KJB) {
                     DashboardScreen(vm, initialPane) { destination = null }
-                } else if (destination == AppDestination.HOMEPAGE) {
+                } else if (destination == AppDestination.HOMEPAGE || destination == AppDestination.FINANCE) {
                     HomepageWebScreen(
                         onExit = { destination = null },
+                        startUrl = if (destination == AppDestination.FINANCE) {
+                            HomepageRoute.financeUrl
+                        } else {
+                            HomepageRoute.canonicalUrl
+                        },
                         onDestination = { target ->
                             when (target) {
                                 AppDestination.EMAIL -> {
@@ -146,7 +152,7 @@ class MainActivity : ComponentActivity() {
                                     destination = AppDestination.CHAT_KJB
                                 }
                                 AppDestination.HOME -> destination = null
-                                AppDestination.HOMEPAGE -> Unit
+                                AppDestination.HOMEPAGE, AppDestination.FINANCE -> Unit
                             }
                         },
                     )
@@ -154,6 +160,10 @@ class MainActivity : ComponentActivity() {
                     KimJbLauncher(
                         emailError = emailError,
                         onHomepage = { destination = AppDestination.HOMEPAGE },
+                        onFinance = {
+                            emailError = false
+                            destination = AppDestination.FINANCE
+                        },
                         onEmail = { emailError = !openEmail() },
                         onChat = {
                             emailError = false

@@ -6,11 +6,13 @@ import android.net.Uri
 /**
  * Top-level destinations owned by the unified ChatKJB app.
  *
- * [HOMEPAGE] is reachable only from the launcher, never from the deep-link contract.
+ * [HOMEPAGE] and [FINANCE] are reachable only from the launcher, never from the
+ * deep-link contract.
  */
 enum class AppDestination {
     HOME,
     HOMEPAGE,
+    FINANCE,
     EMAIL,
     CHAT_KJB,
 }
@@ -20,6 +22,16 @@ object HomepageRoute {
     /** Materialized only on Android; pure policy tests use [canonicalUrl]. */
     val uri: Uri by lazy { Uri.parse(canonicalUrl) }
     const val canonicalUrl = "https://kimjb.com/"
+
+    /**
+     * Admin-only asset view on the same origin.
+     *
+     * The site deliberately stopped listing this under Information, so the app
+     * launcher is now the entry point. The server still gates it behind the
+     * admin session, and an unauthenticated visit lands on the sign-in page that
+     * this WebView already knows how to complete.
+     */
+    const val financeUrl = "https://kimjb.com/finance/"
 
     fun isAllowed(candidate: Uri): Boolean =
         isAllowed(candidate.toString())

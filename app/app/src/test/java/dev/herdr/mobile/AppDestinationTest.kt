@@ -64,6 +64,18 @@ class AppDestinationTest {
         assertEquals(null, parseDestinationUri("kimjb://open/web"))
     }
 
+    /** Finance left the site's Information menu, so the app launcher opens it directly. */
+    @Test fun financeUrlStaysOnTheCanonicalOrigin() {
+        assertEquals("https://kimjb.com/finance/", HomepageRoute.financeUrl)
+        assertTrue(HomepageRoute.isAllowed(HomepageRoute.financeUrl))
+        assertTrue(HomepageRoute.isInAppNavigation(HomepageRoute.financeUrl))
+    }
+
+    @Test fun financeIsNotReachableByDeepLink() {
+        assertEquals(null, parseDestinationUri("kimjb://open/finance"))
+        assertEquals(null, parseDestinationUri("kimjb://open/web"))
+    }
+
     @Test fun legacyKjbmailSchemeOpensEmail() {
         assertEquals(AppDestination.EMAIL, parseDestinationUri("kjbmail://open"))
         assertEquals(AppDestination.EMAIL, parseDestinationUri("kjbmail://open/"))

@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -40,8 +41,16 @@ import dev.herdr.mobile.core.navigation.parseDestinationUri
 fun HomepageWebScreen(
     onExit: () -> Unit,
     onDestination: (AppDestination) -> Unit,
+    startUrl: String = HomepageRoute.canonicalUrl,
 ) {
     var webView by remember { mutableStateOf<WebView?>(null) }
+
+    // The WebView is created once, so a caller that swaps the entry point while
+    // this screen is up would otherwise keep showing the previous page.
+    LaunchedEffect(startUrl) {
+        val view = webView ?: return@LaunchedEffect
+        if (HomepageRoute.isAllowed(startUrl) && view.url != startUrl) view.loadUrl(startUrl)
+    }
 
     BackHandler {
         val view = webView
@@ -88,7 +97,12 @@ fun HomepageWebScreen(
                     CookieManager.getInstance().setAcceptThirdPartyCookies(this, true)
 
                     webViewClient = HomepageWebViewClient(ctx, onDestination)
-                    loadUrl(HomepageRoute.canonicalUrl)
+                    // Guarded so a future caller cannot widen this surface: the
+                    // WebView still only ever opens the canonical origin.
+                    loadUrl(
+                        if (HomepageRoute.isAllowed(startUrl)) startUrl
+                        else HomepageRoute.canonicalUrl,
+                    )
                     webView = this
                 }
             },

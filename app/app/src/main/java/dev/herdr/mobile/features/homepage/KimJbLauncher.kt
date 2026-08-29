@@ -56,6 +56,7 @@ private val KimJbColorScheme = lightColorScheme(
 fun KimJbLauncher(
     emailError: Boolean,
     onHomepage: () -> Unit,
+    onFinance: () -> Unit,
     onEmail: () -> Unit,
     onChat: () -> Unit,
 ) {
@@ -100,6 +101,8 @@ fun KimJbLauncher(
                             modifier = Modifier.fillMaxWidth(),
                         )
                     }
+                    Spacer(Modifier.height(12.dp))
+                    KimJbLink(title = "Finance", onClick = onFinance, description = "Open Finance")
                     Spacer(Modifier.height(12.dp))
                     KimJbLink(title = "ChatKJB", onClick = onChat, description = "Open ChatKJB")
                 }
