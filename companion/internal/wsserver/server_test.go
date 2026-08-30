@@ -108,8 +108,15 @@ func readUntil(t *testing.T, ctx context.Context, c *websocket.Conn, want string
 
 func TestTermOpenEchoBridge(t *testing.T) {
 	s := NewServer(AllowAll{}, &stubRPC{})
+	s.SetInitialSnapshot(func() []state.Pane {
+		return []state.Pane{{PaneID: "w6:p1", TerminalID: "term_live"}}
+	})
+	var attachedTarget string
 	// Bridge to `cat` instead of herdr: echoes input straight back as term_data.
-	s.attachArgv = func(target string) []string { return []string{"cat"} }
+	s.attachArgv = func(target string) []string {
+		attachedTarget = target
+		return []string{"cat"}
+	}
 
 	srv := httptest.NewServer(s.Handler())
 	defer srv.Close()
@@ -127,6 +134,9 @@ func TestTermOpenEchoBridge(t *testing.T) {
 	if termID == "" {
 		t.Fatal("no termId in term_opened")
 	}
+	if attachedTarget != "term_live" {
+		t.Fatalf("attach target = %q, want terminal id", attachedTarget)
+	}
 
 	// send input; cat echoes it back as term_data
 	in := base64.StdEncoding.EncodeToString([]byte("ping\n"))
@@ -135,6 +145,32 @@ func TestTermOpenEchoBridge(t *testing.T) {
 	dec, _ := base64.StdEncoding.DecodeString(data["data"].(string))
 	if !strings.Contains(string(dec), "ping") {
 		t.Fatalf("echo not received, got %q", dec)
+	}
+}
+
+func TestTermOpenRejectsStalePaneID(t *testing.T) {
+	s := NewServer(AllowAll{}, &stubRPC{})
+	s.SetInitialSnapshot(func() []state.Pane {
+		return []state.Pane{{PaneID: "w6:p2", TerminalID: "term_live"}}
+	})
+	s.attachArgv = func(target string) []string {
+		t.Fatalf("must not start terminal for stale pane %q", target)
+		return nil
+	}
+
+	srv := httptest.NewServer(s.Handler())
+	defer srv.Close()
+	ctx := context.Background()
+	c, _, err := websocket.Dial(ctx, "ws"+strings.TrimPrefix(srv.URL, "http"), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer c.Close(websocket.StatusNormalClosure, "")
+
+	c.Write(ctx, websocket.MessageText, []byte(`{"t":"term_open","reqId":"stale","target":"w6:p1","cols":80,"rows":24}`))
+	errFrame := readUntil(t, ctx, c, "term_error")
+	if !strings.Contains(errFrame["message"].(string), "no longer available") {
+		t.Fatalf("unexpected stale pane error: %v", errFrame)
 	}
 }
 
@@ -247,6 +283,9 @@ func TestTermOpenRejectsInvalidTarget(t *testing.T) {
 
 func TestTermOpenMaxTermsCap(t *testing.T) {
 	s := NewServer(AllowAll{}, &stubRPC{})
+	s.SetInitialSnapshot(func() []state.Pane {
+		return []state.Pane{{PaneID: "w6:p1", TerminalID: "term_live"}}
+	})
 	// Long-lived process so sessions stay open for the duration of the test.
 	s.attachArgv = func(target string) []string { return []string{"sh", "-c", "sleep 30"} }
 

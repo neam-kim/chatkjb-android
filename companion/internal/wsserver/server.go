@@ -484,6 +484,12 @@ func (s *Server) openTerm(ctx context.Context, c *client, reqID, target string, 
 		c.send <- proto.TermError(reqID, "", "invalid target")
 		return
 	}
+	attachTarget, ok := s.resolveAttachTarget(target)
+	if !ok {
+		s.poke()
+		c.send <- proto.TermError(reqID, "", "pane is no longer available; refresh and try again")
+		return
+	}
 	c.smu.Lock()
 	over := len(c.sessions) >= maxTerms
 	c.smu.Unlock()
@@ -501,7 +507,7 @@ func (s *Server) openTerm(ctx context.Context, c *client, reqID, target string, 
 
 	ts := &termSession{}
 
-	sess, err := pty.Start(s.attachArgv(target), uint16(cols), uint16(rows),
+	sess, err := pty.Start(s.attachArgv(attachTarget), uint16(cols), uint16(rows),
 		func(b []byte) {
 			sendBlocking(ctx, c, proto.TermData(termID, base64.StdEncoding.EncodeToString(b)))
 		},
@@ -526,4 +532,27 @@ func (s *Server) openTerm(ctx context.Context, c *client, reqID, target string, 
 	c.sessions[termID] = ts
 	c.smu.Unlock()
 	c.send <- proto.TermOpened(reqID, termID)
+}
+
+// resolveAttachTarget translates the pane id used by mobile clients into the
+// terminal id required by `herdr terminal attach`. Older companions passed a
+// value such as w14:p12 directly, causing Herdr to shut the attachment down
+// with "terminal ... not found" even though the pane snapshot contained its
+// valid terminal id. A missing pane-shaped target is treated as stale state.
+func (s *Server) resolveAttachTarget(target string) (string, bool) {
+	if strings.HasPrefix(target, "term_") {
+		return target, true
+	}
+	for _, pane := range s.snapshot() {
+		if pane.PaneID == target {
+			if pane.TerminalID == "" {
+				return "", false
+			}
+			return pane.TerminalID, true
+		}
+	}
+	if strings.Contains(target, ":") {
+		return "", false
+	}
+	return target, true
 }
