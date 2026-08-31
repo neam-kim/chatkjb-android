@@ -28,6 +28,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.herdr.mobile.R
+import dev.herdr.mobile.core.navigation.AppDestination
 
 internal val KimJbBackground = Color(0xFFF7F7F7)
 private val KimJbInk = Color(0xFF111111)
@@ -47,6 +48,21 @@ private val KimJbColorScheme = lightColorScheme(
     error = Color(0xFFB3261E),
 )
 
+/** Ordered launcher entries for deterministic navigation and verification. */
+data class LauncherEntry(
+    val title: String,
+    val description: String,
+    val destination: AppDestination,
+)
+
+val KimJbLauncherEntries: List<LauncherEntry> = listOf(
+    LauncherEntry("Homepage", "Open Homepage", AppDestination.HOMEPAGE),
+    LauncherEntry("Email", "Open Email", AppDestination.EMAIL),
+    LauncherEntry("Finance", "Open Finance", AppDestination.FINANCE),
+    LauncherEntry("ChatKJB", "Open ChatKJB", AppDestination.CHAT_KJB),
+    LauncherEntry("Q Servant", "Open Q Servant", AppDestination.Q_SERVANT),
+)
+
 /**
  * Native launcher styled after kimjb.com's current homepage: light canvas,
  * centered monogram, restrained typography, and bordered white link rows.
@@ -59,6 +75,7 @@ fun KimJbLauncher(
     onFinance: () -> Unit,
     onEmail: () -> Unit,
     onChat: () -> Unit,
+    onQServant: () -> Unit = {},
 ) {
     MaterialTheme(colorScheme = KimJbColorScheme) {
         Surface(
@@ -105,6 +122,8 @@ fun KimJbLauncher(
                     KimJbLink(title = "Finance", onClick = onFinance, description = "Open Finance")
                     Spacer(Modifier.height(12.dp))
                     KimJbLink(title = "ChatKJB", onClick = onChat, description = "Open ChatKJB")
+                    Spacer(Modifier.height(12.dp))
+                    KimJbLink(title = "Q Servant", onClick = onQServant, description = "Open Q Servant")
                 }
             }
         }

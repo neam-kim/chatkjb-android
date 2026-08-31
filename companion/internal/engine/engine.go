@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -12,6 +13,7 @@ import (
 	"github.com/mohamed-essam/herdr-mobile/companion/internal/herdr"
 	"github.com/mohamed-essam/herdr-mobile/companion/internal/notify"
 	"github.com/mohamed-essam/herdr-mobile/companion/internal/proto"
+	"github.com/mohamed-essam/herdr-mobile/companion/internal/qservant"
 	"github.com/mohamed-essam/herdr-mobile/companion/internal/state"
 	"github.com/mohamed-essam/herdr-mobile/companion/internal/wsserver"
 )
@@ -21,6 +23,8 @@ type Config struct {
 	ListenAddr       string
 	PollInterval     time.Duration
 	DebounceFinished time.Duration
+	StateDir         string
+	ConfigPath       string
 }
 
 type Engine struct {
@@ -28,6 +32,7 @@ type Engine struct {
 	client *herdr.Client
 	store  *state.Store
 	srv    *wsserver.Server
+	qm     *QServantManager
 
 	mu       sync.Mutex
 	endpoint string
@@ -51,9 +56,61 @@ func New(cfg Config) *Engine {
 	e.srv.SetTabSnapshot(e.store.Tabs)
 	e.srv.SetPushEndpoint(e.setEndpoint)
 	e.srv.SetPoke(e.Poke)
+
+	stateDir := cfg.StateDir
+	if stateDir == "" {
+		stateDir = defaultStateDir()
+	}
+	runner := NewHerdrRunnerWithDir(c, filepath.Join(stateDir, "reports"))
+	ctrl := qservant.NewJobController(stateDir, runner)
+	cat := qservant.NewCatalog(qservant.ExecCommandRunner{}, cfg.ConfigPath, nil)
+	quota := qservant.NewQuotaClient(qservant.ExecCommandRunner{}, 15*time.Second)
+	stt := NewSwiftSTT()
+	e.qm = NewQServantManager(cat, quota, ctrl, stt, e.srv.Broadcast)
+	e.srv.SetQServant(e.qm)
+
 	e.trigger = make(chan struct{}, 1)
 	e.subs = map[string]context.CancelFunc{}
 	return e
+}
+
+func defaultStateDir() string {
+	if v := os.Getenv("QSERVANT_STATE_DIR"); v != "" {
+		return v
+	}
+	home, err := os.UserHomeDir()
+	if err == nil && home != "" {
+		return filepath.Join(home, ".config", "herdr", "qservant")
+	}
+	return filepath.Join(os.TempDir(), "herdr-qservant")
+}
+
+func (e *Engine) SetQServant(qc wsserver.QServantController) {
+	e.srv.SetQServant(qc)
+}
+
+func (e *Engine) SetSTT(stt qservant.STT) {
+	if e.qm != nil {
+		e.qm.stt = stt
+	}
+}
+
+func (e *Engine) SetRunner(r qservant.Runner) {
+	if e.qm != nil && e.qm.controller != nil {
+		e.qm.controller = qservant.NewJobController(e.cfg.StateDir, r)
+	}
+}
+
+func (e *Engine) SetCatalog(cat *qservant.Catalog) {
+	if e.qm != nil {
+		e.qm.catalog = cat
+	}
+}
+
+func (e *Engine) SetQuota(q *qservant.QuotaClient) {
+	if e.qm != nil {
+		e.qm.quota = q
+	}
 }
 
 func (e *Engine) setEndpoint(ep string) {

@@ -46,6 +46,7 @@ import dev.herdr.mobile.features.chat.ui.DashboardViewModel
 import dev.herdr.mobile.features.homepage.HomepageWebScreen
 import dev.herdr.mobile.features.homepage.KimJbLauncher
 import dev.herdr.mobile.features.chat.ui.theme.HerdrTheme
+import dev.herdr.mobile.features.qservant.QServantScreen
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -68,8 +69,9 @@ class MainActivity : ComponentActivity() {
         }
 
         val settings = Settings(applicationContext)
+        val client = CompanionClient()
         val vm = DashboardViewModel(
-            CompanionClient(),
+            client,
             PaneRepository(),
             fontSizeStore = settings.terminalFontSize,
             persistFontSize = { px -> lifecycleScope.launch { settings.setTerminalFontSize(px) } },
@@ -90,7 +92,7 @@ class MainActivity : ComponentActivity() {
                 val stored = settings.companionUrl.first()
                 url = stored
                 loaded = true
-                if (stored != null && requestedDestination == AppDestination.CHAT_KJB) {
+                if (stored != null && (requestedDestination == AppDestination.CHAT_KJB || requestedDestination == AppDestination.Q_SERVANT)) {
                     chatStarted = true
                     vm.start(stored)
                 }
@@ -102,9 +104,9 @@ class MainActivity : ComponentActivity() {
                 settings.pushEndpoint.filterNotNull().collect { endpoint -> vm.registerPush(endpoint) }
             }
 
-            // A validated ChatKJB deep link may arrive before DataStore finishes loading.
+            // A validated ChatKJB or Q Servant destination may arrive before DataStore finishes loading or upon selection.
             LaunchedEffect(destination, url, loaded) {
-                if (loaded && destination == AppDestination.CHAT_KJB && url != null && !chatStarted) {
+                if (loaded && (destination == AppDestination.CHAT_KJB || destination == AppDestination.Q_SERVANT) && url != null && !chatStarted) {
                     chatStarted = true
                     vm.start(url!!)
                 }
@@ -124,7 +126,7 @@ class MainActivity : ComponentActivity() {
             HerdrTheme {
                 if (!loaded) {
                     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {}
-                } else if (destination == AppDestination.CHAT_KJB && url == null) {
+                } else if ((destination == AppDestination.CHAT_KJB || destination == AppDestination.Q_SERVANT) && url == null) {
                     OnboardUrl { entered ->
                         lifecycleScope.launch { settings.setCompanionUrl(entered) }
                         url = entered
@@ -151,11 +153,17 @@ class MainActivity : ComponentActivity() {
                                     emailError = false
                                     destination = AppDestination.CHAT_KJB
                                 }
+                                AppDestination.Q_SERVANT -> {
+                                    emailError = false
+                                    destination = AppDestination.Q_SERVANT
+                                }
                                 AppDestination.HOME -> destination = null
                                 AppDestination.HOMEPAGE, AppDestination.FINANCE -> Unit
                             }
                         },
                     )
+                } else if (destination == AppDestination.Q_SERVANT) {
+                    QServantScreen(client = client, onBack = { destination = null })
                 } else {
                     KimJbLauncher(
                         emailError = emailError,
@@ -168,6 +176,10 @@ class MainActivity : ComponentActivity() {
                         onChat = {
                             emailError = false
                             destination = AppDestination.CHAT_KJB
+                        },
+                        onQServant = {
+                            emailError = false
+                            destination = AppDestination.Q_SERVANT
                         },
                     )
                     BackHandler { finish() }

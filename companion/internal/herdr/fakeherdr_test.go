@@ -35,16 +35,21 @@ type recordedCall struct {
 
 func newFakeHerdr(t *testing.T) *fakeHerdr {
 	t.Helper()
-	dir := t.TempDir()
+	// Keep the socket path within the AF_UNIX limit (104 bytes on macOS);
+	// t.TempDir() paths can exceed it there.
+	dir, err := os.MkdirTemp("/tmp", "herdr-test-*")
+	if err != nil {
+		dir = t.TempDir()
+	}
 	path := filepath.Join(dir, "herdr.sock")
 	ln, err := net.Listen("unix", path)
 	if err != nil {
 		t.Fatal(err)
 	}
 	f := &fakeHerdr{t: t, ln: ln, path: path, readText: map[string]string{},
-		lastSend: make(chan map[string]any, 8), lastCall: make(chan recordedCall, 8)}
+		lastSend: make(chan map[string]any, 16), lastCall: make(chan recordedCall, 16)}
 	go f.serve()
-	t.Cleanup(func() { ln.Close(); os.Remove(path) })
+	t.Cleanup(func() { ln.Close(); os.RemoveAll(dir) })
 	return f
 }
 
@@ -100,6 +105,17 @@ func (f *fakeHerdr) handle(c net.Conn) {
 		f.mu.Lock()
 		panes := f.panes
 		f.mu.Unlock()
+		f.lastCall <- recordedCall{Method: req.Method, Params: req.Params}
+		wsID, _ := req.Params["workspace_id"].(string)
+		if wsID != "" {
+			filtered := make([]PaneInfo, 0, len(panes))
+			for _, p := range panes {
+				if p.WorkspaceID == wsID {
+					filtered = append(filtered, p)
+				}
+			}
+			panes = filtered
+		}
 		enc.Encode(map[string]any{"id": req.ID, "result": map[string]any{"type": "pane_list", "panes": panes}})
 	case "workspace.list":
 		f.mu.Lock()
@@ -143,8 +159,70 @@ func (f *fakeHerdr) handle(c net.Conn) {
 			"type": "pane_info", "pane": map[string]any{"pane_id": "w7:pS", "terminal_id": "term_split"}}})
 	case "agent.start":
 		f.lastCall <- recordedCall{Method: req.Method, Params: req.Params}
+		name, _ := req.Params["name"].(string)
+		kind, _ := req.Params["kind"].(string)
+		paneID, _ := req.Params["pane_id"].(string)
+		if paneID == "" {
+			paneID = "w7:pA"
+		}
 		enc.Encode(map[string]any{"id": req.ID, "result": map[string]any{
-			"type": "agent_started", "agent": map[string]any{"pane_id": "w7:pA", "terminal_id": "term_agent"}}})
+			"type": "agent_started",
+			"argv": []string{},
+			"agent": map[string]any{
+				"name": name, "pane_id": paneID, "terminal_id": "term_agent",
+				"workspace_id": "w7", "tab_id": "w7:t1", "agent": kind,
+				"agent_status": "idle", "focused": false, "interactive_ready": true,
+			}}})
+	case "agent.get":
+		f.lastCall <- recordedCall{Method: req.Method, Params: req.Params}
+		target, _ := req.Params["target"].(string)
+		enc.Encode(map[string]any{"id": req.ID, "result": map[string]any{
+			"type": "agent_info",
+			"agent": map[string]any{
+				"name": "q-servant", "pane_id": target, "terminal_id": "term_agent",
+				"workspace_id": "w1F", "tab_id": "w1F:t1", "agent": "codex",
+				"agent_status": "idle", "focused": false, "interactive_ready": true,
+			}}})
+	case "agent.wait":
+		f.lastCall <- recordedCall{Method: req.Method, Params: req.Params}
+		target, _ := req.Params["target"].(string)
+		enc.Encode(map[string]any{"id": req.ID, "result": map[string]any{
+			"type": "agent_info",
+			"agent": map[string]any{
+				"name": target, "pane_id": "w1F:p2", "terminal_id": "term_agent",
+				"workspace_id": "w1F", "tab_id": "w1F:t1", "agent": "codex",
+				"agent_status": "idle", "focused": false, "interactive_ready": true,
+			}}})
+	case "agent.list":
+		f.lastCall <- recordedCall{Method: req.Method, Params: req.Params}
+		enc.Encode(map[string]any{"id": req.ID, "result": map[string]any{
+			"type": "agent_list",
+			"agents": []map[string]any{{
+				"name": "q-servant", "pane_id": "w1F:p1", "terminal_id": "term_agent",
+				"workspace_id": "w1F", "tab_id": "w1F:t1", "agent": "codex",
+				"agent_status": "idle", "focused": false,
+			}}}})
+	case "agent.prompt":
+		f.lastCall <- recordedCall{Method: req.Method, Params: req.Params}
+		target, _ := req.Params["target"].(string)
+		enc.Encode(map[string]any{"id": req.ID, "result": map[string]any{
+			"type": "agent_prompted",
+			"agent": map[string]any{
+				"name": "q-servant", "pane_id": target, "terminal_id": "term_agent",
+				"workspace_id": "w1F", "tab_id": "w1F:t1", "agent": "codex",
+				"agent_status": "working", "focused": false,
+			}}})
+	case "agent.send_keys":
+		f.lastCall <- recordedCall{Method: req.Method, Params: req.Params}
+		enc.Encode(map[string]any{"id": req.ID, "result": map[string]any{"type": "ok"}})
+	case "agent.read":
+		f.lastCall <- recordedCall{Method: req.Method, Params: req.Params}
+		target, _ := req.Params["target"].(string)
+		f.mu.Lock()
+		txt := f.readText[target]
+		f.mu.Unlock()
+		enc.Encode(map[string]any{"id": req.ID, "result": map[string]any{"type": "pane_read",
+			"read": map[string]any{"pane_id": target, "source": req.Params["source"], "text": txt}}})
 	case "pane.move":
 		f.lastCall <- recordedCall{Method: req.Method, Params: req.Params}
 		enc.Encode(map[string]any{"id": req.ID, "result": map[string]any{

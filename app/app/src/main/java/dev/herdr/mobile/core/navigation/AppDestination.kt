@@ -6,8 +6,8 @@ import android.net.Uri
 /**
  * Top-level destinations owned by the unified ChatKJB app.
  *
- * [HOMEPAGE] and [FINANCE] are reachable only from the launcher, never from the
- * deep-link contract.
+ * [HOMEPAGE], [FINANCE], and [Q_SERVANT] are reachable only from the launcher,
+ * never from the deep-link contract.
  */
 enum class AppDestination {
     HOME,
@@ -15,6 +15,7 @@ enum class AppDestination {
     FINANCE,
     EMAIL,
     CHAT_KJB,
+    Q_SERVANT,
 }
 
 /** Fixed web surface; never accept an arbitrary URL from an intent or UI. */

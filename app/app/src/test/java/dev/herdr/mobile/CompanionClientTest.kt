@@ -2,6 +2,7 @@ package dev.herdr.mobile
 
 import dev.herdr.mobile.features.chat.net.CompanionClient
 import dev.herdr.mobile.features.chat.net.ServerFrame
+import dev.herdr.mobile.features.chat.net.ClientMsg
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -121,8 +122,84 @@ class CompanionClientTest {
         }))
         server.start()
         client = CompanionClient(http)
+       client.connect(server.url("/").toString().replace("http", "ws"))
+       val result = withTimeout(3000) { client.closeImpact("w1") }
+       assertTrue(result.isEmpty())
+   }
+
+    @Test fun qservantCatalogCompletesPendingReply() = runBlocking {
+        server = MockWebServer()
+        server.enqueue(MockResponse().withWebSocketUpgrade(object : WebSocketListener() {
+            override fun onMessage(webSocket: WebSocket, text: String) {
+                if (!text.contains("\"qservant_catalog\"")) return
+                val reqId = Regex("\"reqId\":\"([^\"]+)\"").find(text)!!.groupValues[1]
+                webSocket.send("""{"t":"qservant_catalog_result","reqId":"$reqId","models":[{"id":"live/a","label":"A","efforts":["low"],"quota":null}],"defaultModel":"live/a"}""")
+            }
+        }))
+        server.start()
+        client = CompanionClient(http)
         client.connect(server.url("/").toString().replace("http", "ws"))
-        val result = withTimeout(3000) { client.closeImpact("w1") }
-        assertTrue(result.isEmpty())
+        val frame = withTimeout(3000) { client.qservantCatalog() }
+        assertTrue(frame is ServerFrame.QServantCatalogResult)
+        val catalog = frame as ServerFrame.QServantCatalogResult
+        assertEquals("live/a", catalog.defaultModel)
+        assertEquals("A", catalog.models.single().label)
+        assertNull(catalog.models.single().quota)
+    }
+
+    @Test fun qservantSubmitDeliversJobAndErrorFrames() = runBlocking {
+        server = MockWebServer()
+        server.enqueue(MockResponse().withWebSocketUpgrade(object : WebSocketListener() {
+            override fun onMessage(webSocket: WebSocket, text: String) {
+                if (!text.contains("\"reqId\"")) return
+                val reqId = Regex("\"reqId\":\"([^\"]+)\"").find(text)!!.groupValues[1]
+                when {
+                    text.contains("\"qservant_submit\"") -> {
+                        assertTrue(text.contains("\"audioMime\":\"audio/mp4\""))
+                        assertTrue(text.contains("\"audioBase64\":\"YWI=\""))
+                        webSocket.send("""{"t":"qservant_job","reqId":"$reqId","job":{"jobId":"job-9","state":"completed","report":{"request":"r","work":"w","verification":"v","changes":[],"result":"ok","success":true}}}""")
+                    }
+                    text.contains("\"qservant_status\"") -> {
+                        webSocket.send("""{"t":"qservant_error","reqId":"$reqId","jobId":"job-9","code":"stt_failed","message":"boom"}""")
+                    }
+                }
+            }
+        }))
+        server.start()
+        client = CompanionClient(http)
+        client.connect(server.url("/").toString().replace("http", "ws"))
+        val job = withTimeout(3000) { client.qservantSubmit("live/a", "high", "YWI=") }
+        assertTrue(job is ServerFrame.QServantJobFrame)
+        job as ServerFrame.QServantJobFrame
+        assertEquals("job-9", job.job.jobId)
+        assertEquals("completed", job.job.state)
+        assertTrue(job.job.report!!.success)
+        val err = withTimeout(3000) { client.qservantStatus("job-9") }
+        assertTrue(err is ServerFrame.QServantError)
+        err as ServerFrame.QServantError
+        assertEquals("stt_failed", err.code)
+        assertEquals("job-9", err.jobId)
+    }
+
+    @Test fun awaitReplyCompletesQServantFramesOnSharedSocket() = runBlocking {
+        server = MockWebServer()
+        server.enqueue(MockResponse().withWebSocketUpgrade(object : WebSocketListener() {
+            override fun onMessage(webSocket: WebSocket, text: String) {
+                if (!text.contains("\"qservant_cancel\"")) return
+                val reqId = Regex("\"reqId\":\"([^\"]+)\"").find(text)!!.groupValues[1]
+                webSocket.send("""{"t":"qservant_job","reqId":"$reqId","job":{"jobId":"job-1","state":"cancelled"}}""")
+            }
+        }))
+        server.start()
+        client = CompanionClient(http)
+        client.connect(server.url("/").toString().replace("http", "ws"))
+        val collected = java.util.concurrent.CopyOnWriteArrayList<ServerFrame>()
+        val job = launch(Dispatchers.Default) { client.frames.collect { collected.add(it) } }
+        val frame = withTimeout(3000) { client.awaitReply("qx", ClientMsg.qservantCancel("qx", "job-1")) }
+        assertTrue(frame is ServerFrame.QServantJobFrame)
+        assertEquals("cancelled", (frame as ServerFrame.QServantJobFrame).job.state)
+        withTimeout(3000) { while (collected.none { it is ServerFrame.QServantJobFrame }) delay(20) }
+        assertTrue(collected.any { it is ServerFrame.QServantJobFrame })
+        job.cancel()
     }
 }

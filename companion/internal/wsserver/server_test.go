@@ -15,6 +15,7 @@ import (
 
 	"github.com/coder/websocket"
 	"github.com/mohamed-essam/herdr-mobile/companion/internal/herdr"
+	"github.com/mohamed-essam/herdr-mobile/companion/internal/proto"
 	"github.com/mohamed-essam/herdr-mobile/companion/internal/state"
 )
 
@@ -401,8 +402,8 @@ func TestInitialSnapshotIncludesWorkspacesAndTabs(t *testing.T) {
 	defer c.Close(websocket.StatusNormalClosure, "")
 
 	welcome := readUntil(t, ctx, c, "welcome")
-	if welcome["companionProtocol"].(float64) != 7 {
-		t.Fatalf("want companionProtocol 7, got %v", welcome["companionProtocol"])
+	if welcome["companionProtocol"].(float64) != 8 {
+		t.Fatalf("want companionProtocol 8, got %v", welcome["companionProtocol"])
 	}
 	ws := readUntil(t, ctx, c, "workspaces")
 	arr := ws["workspaces"].([]any)
@@ -683,5 +684,198 @@ func TestCreateRejectsUnknownWhat(t *testing.T) {
 	res := readUntil(t, ctx, c, "created")
 	if res["ok"] != false {
 		t.Fatalf("expected ok=false for unknown what, got %+v", res)
+	}
+}
+
+type stubQServant struct {
+	catInfo   QServantCatalogInfo
+	catErr    error
+	submitJob proto.QServantJobPayload
+	submitErr error
+	statusJob proto.QServantJobPayload
+	statusOk  bool
+	cancelJob proto.QServantJobPayload
+	cancelErr error
+}
+
+func (s *stubQServant) Catalog(ctx context.Context) (QServantCatalogInfo, error) {
+	return s.catInfo, s.catErr
+}
+func (s *stubQServant) Submit(ctx context.Context, model, effort, audioMime, audioBase64 string) (proto.QServantJobPayload, error) {
+	return s.submitJob, s.submitErr
+}
+func (s *stubQServant) Status(ctx context.Context, jobID string) (proto.QServantJobPayload, bool) {
+	return s.statusJob, s.statusOk
+}
+func (s *stubQServant) Cancel(ctx context.Context, jobID string) (proto.QServantJobPayload, error) {
+	return s.cancelJob, s.cancelErr
+}
+
+func TestQServantRoutes(t *testing.T) {
+	qs := &stubQServant{
+		catInfo: QServantCatalogInfo{
+			DefaultModel:  "openai/gpt-5.6-sol",
+			DefaultEffort: "high",
+			UpdatedAt:     "2026-08-31T00:00:00Z",
+		},
+		submitJob: proto.QServantJobPayload{
+			JobID:      "job-1",
+			State:      "recorded",
+			Transcript: "test audio",
+		},
+		statusJob: proto.QServantJobPayload{
+			JobID:      "job-1",
+			State:      "completed",
+			Transcript: "test audio",
+		},
+		statusOk: true,
+		cancelJob: proto.QServantJobPayload{
+			JobID: "job-1",
+			State: "cancelled",
+		},
+	}
+
+	s := NewServer(AllowAll{}, &stubRPC{})
+	s.SetQServant(qs)
+	srv := httptest.NewServer(s.Handler())
+	defer srv.Close()
+	ctx := context.Background()
+	c, _, err := websocket.Dial(ctx, "ws"+strings.TrimPrefix(srv.URL, "http"), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer c.Close(websocket.StatusNormalClosure, "")
+
+	// Test catalog
+	c.Write(ctx, websocket.MessageText, []byte(`{"t":"qservant_catalog","reqId":"rc1"}`))
+	catRes := readUntil(t, ctx, c, "qservant_catalog_result")
+	if catRes["reqId"] != "rc1" || catRes["defaultModel"] != "openai/gpt-5.6-sol" {
+		t.Fatalf("bad catalog res: %+v", catRes)
+	}
+
+	// Test submit
+	c.Write(ctx, websocket.MessageText, []byte(`{"t":"qservant_submit","reqId":"rs1","model":"openai/gpt-5.6-sol","effort":"high","audioMime":"audio/mp4","audioBase64":"YWJj"}`))
+	submitRes := readUntil(t, ctx, c, "qservant_job")
+	if submitRes["reqId"] != "rs1" || submitRes["job"] == nil {
+		t.Fatalf("bad submit res header: %+v", submitRes)
+	}
+	sJob := submitRes["job"].(map[string]any)
+	if sJob["jobId"] != "job-1" || sJob["state"] != "recorded" {
+		t.Fatalf("bad submit res job: %+v", sJob)
+	}
+
+	// Test status
+	c.Write(ctx, websocket.MessageText, []byte(`{"t":"qservant_status","reqId":"rst1","jobId":"job-1"}`))
+	statusRes := readUntil(t, ctx, c, "qservant_job")
+	if statusRes["reqId"] != "rst1" || statusRes["job"] == nil {
+		t.Fatalf("bad status res header: %+v", statusRes)
+	}
+	stJob := statusRes["job"].(map[string]any)
+	if stJob["jobId"] != "job-1" || stJob["state"] != "completed" {
+		t.Fatalf("bad status res job: %+v", stJob)
+	}
+
+	// Test cancel
+	c.Write(ctx, websocket.MessageText, []byte(`{"t":"qservant_cancel","reqId":"rcan1","jobId":"job-1"}`))
+	cancelRes := readUntil(t, ctx, c, "qservant_job")
+	if cancelRes["reqId"] != "rcan1" || cancelRes["job"] == nil {
+		t.Fatalf("bad cancel res header: %+v", cancelRes)
+	}
+	cJob := cancelRes["job"].(map[string]any)
+	if cJob["jobId"] != "job-1" || cJob["state"] != "cancelled" {
+		t.Fatalf("bad cancel res job: %+v", cJob)
+	}
+}
+
+func TestQServantAcceptsAudioLargerThanDefaultWebSocketLimit(t *testing.T) {
+	qs := &stubQServant{submitJob: proto.QServantJobPayload{JobID: "large-audio", State: "recorded"}}
+	s := NewServer(AllowAll{}, &stubRPC{})
+	s.SetQServant(qs)
+	srv := httptest.NewServer(s.Handler())
+	defer srv.Close()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	c, _, err := websocket.Dial(ctx, "ws"+strings.TrimPrefix(srv.URL, "http"), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer c.Close(websocket.StatusNormalClosure, "")
+
+	request, err := json.Marshal(map[string]any{
+		"t":           "qservant_submit",
+		"reqId":       "large-submit",
+		"model":       "openai/gpt",
+		"audioMime":   "audio/mp4",
+		"audioBase64": strings.Repeat("A", 64<<10),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(request) <= 32<<10 {
+		t.Fatalf("test request must exceed coder/websocket's default limit: %d", len(request))
+	}
+	if err := c.Write(ctx, websocket.MessageText, request); err != nil {
+		t.Fatal(err)
+	}
+	result := readUntil(t, ctx, c, "qservant_job")
+	job := result["job"].(map[string]any)
+	if job["jobId"] != "large-audio" {
+		t.Fatalf("large submit did not reach Q Servant handler: %+v", result)
+	}
+}
+
+func TestQServantErrors(t *testing.T) {
+	qs := &stubQServant{
+		catErr:    errors.New("cat fail"),
+		submitErr: errors.New("submit fail"),
+		statusOk:  false,
+		cancelErr: errors.New("cancel fail"),
+	}
+
+	s := NewServer(AllowAll{}, &stubRPC{})
+	s.SetQServant(qs)
+	srv := httptest.NewServer(s.Handler())
+	defer srv.Close()
+	ctx := context.Background()
+	c, _, err := websocket.Dial(ctx, "ws"+strings.TrimPrefix(srv.URL, "http"), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer c.Close(websocket.StatusNormalClosure, "")
+
+	// Catalog error
+	c.Write(ctx, websocket.MessageText, []byte(`{"t":"qservant_catalog","reqId":"e1"}`))
+	errRes := readUntil(t, ctx, c, "qservant_error")
+	if errRes["reqId"] != "e1" || errRes["code"] != "catalog_failed" {
+		t.Fatalf("bad catalog error: %+v", errRes)
+	}
+
+	// Submit validation error (empty model)
+	c.Write(ctx, websocket.MessageText, []byte(`{"t":"qservant_submit","reqId":"e2","model":"","audioBase64":"YWJj"}`))
+	errRes = readUntil(t, ctx, c, "qservant_error")
+	if errRes["reqId"] != "e2" || errRes["code"] != "invalid_request" {
+		t.Fatalf("bad submit empty model error: %+v", errRes)
+	}
+
+	// Submit error from controller
+	c.Write(ctx, websocket.MessageText, []byte(`{"t":"qservant_submit","reqId":"e3","model":"m1","audioBase64":"YWJj"}`))
+	errRes = readUntil(t, ctx, c, "qservant_error")
+	if errRes["reqId"] != "e3" || errRes["code"] != "submit_failed" {
+		t.Fatalf("bad submit controller error: %+v", errRes)
+	}
+
+	// Status not found
+	c.Write(ctx, websocket.MessageText, []byte(`{"t":"qservant_status","reqId":"e4","jobId":"job-missing"}`))
+	errRes = readUntil(t, ctx, c, "qservant_error")
+	if errRes["reqId"] != "e4" || errRes["code"] != "job_not_found" || errRes["jobId"] != "job-missing" {
+		t.Fatalf("bad status not found error: %+v", errRes)
+	}
+
+	// Cancel error
+	c.Write(ctx, websocket.MessageText, []byte(`{"t":"qservant_cancel","reqId":"e5","jobId":"job-missing"}`))
+	errRes = readUntil(t, ctx, c, "qservant_error")
+	if errRes["reqId"] != "e5" || errRes["code"] != "cancel_failed" || errRes["jobId"] != "job-missing" {
+		t.Fatalf("bad cancel error: %+v", errRes)
 	}
 }

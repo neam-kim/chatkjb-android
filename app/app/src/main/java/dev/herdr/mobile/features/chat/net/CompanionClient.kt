@@ -59,10 +59,13 @@ class CompanionClient(private val http: OkHttpClient = OkHttpClient()) {
                     is ServerFrame.ErrorFrame -> pending.remove(frame.reqId)?.complete(frame)
                     is ServerFrame.TermOpened -> pending.remove(frame.reqId)?.complete(frame)
                     is ServerFrame.TermError -> if (frame.reqId.isNotEmpty()) pending.remove(frame.reqId)?.complete(frame)
-                    is ServerFrame.ActionResult -> pending.remove(frame.reqId)?.complete(frame)
-                    is ServerFrame.Created -> pending.remove(frame.reqId)?.complete(frame)
-                    is ServerFrame.Agents -> pending.remove(frame.reqId)?.complete(frame)
-                    is ServerFrame.CloseImpact -> pending.remove(frame.reqId)?.complete(frame)
+                   is ServerFrame.ActionResult -> pending.remove(frame.reqId)?.complete(frame)
+                   is ServerFrame.Created -> pending.remove(frame.reqId)?.complete(frame)
+                   is ServerFrame.Agents -> pending.remove(frame.reqId)?.complete(frame)
+                   is ServerFrame.CloseImpact -> pending.remove(frame.reqId)?.complete(frame)
+                    is ServerFrame.QServantCatalogResult -> pending.remove(frame.reqId)?.complete(frame)
+                    is ServerFrame.QServantJobFrame -> if (!frame.reqId.isNullOrEmpty()) pending.remove(frame.reqId)?.complete(frame)
+                    is ServerFrame.QServantError -> if (frame.reqId.isNotEmpty()) pending.remove(frame.reqId)?.complete(frame)
                     else -> {}
                 }
                 _frames.tryEmit(frame)
@@ -109,6 +112,33 @@ class CompanionClient(private val http: OkHttpClient = OkHttpClient()) {
         } finally {
             pending.remove(reqId)
         }
+    }
+
+    /**
+     * Send a request on the shared companion WebSocket and wait for the matching
+     * reply (`reqId` on catalog/job/error frames). Feature adapters reuse this
+     * instead of opening a second socket.
+     */
+    suspend fun awaitReply(reqId: String, raw: String): ServerFrame = request(reqId, raw)
+
+    suspend fun qservantCatalog(): ServerFrame {
+        val reqId = "q${seq.incrementAndGet()}"
+        return request(reqId, ClientMsg.qservantCatalog(reqId))
+    }
+
+    suspend fun qservantSubmit(model: String, effort: String, audioBase64: String): ServerFrame {
+        val reqId = "q${seq.incrementAndGet()}"
+        return request(reqId, ClientMsg.qservantSubmit(reqId, model, effort, audioBase64))
+    }
+
+    suspend fun qservantStatus(jobId: String): ServerFrame {
+        val reqId = "q${seq.incrementAndGet()}"
+        return request(reqId, ClientMsg.qservantStatus(reqId, jobId))
+    }
+
+    suspend fun qservantCancel(jobId: String): ServerFrame {
+        val reqId = "q${seq.incrementAndGet()}"
+        return request(reqId, ClientMsg.qservantCancel(reqId, jobId))
     }
 
     suspend fun readPane(paneId: String, source: String = "detection", lines: Int = 40): String {

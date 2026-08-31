@@ -115,7 +115,8 @@ class DashboardViewModelTest {
         withTimeout(3000) { while (!vm.connected.value) delay(20) }
 
         val errors = java.util.concurrent.CopyOnWriteArrayList<String>()
-        val job = launch { vm.actionErrors.collect { errors.add(it) } }
+		// Start collecting before closeNode can emit into the non-replay SharedFlow.
+		val job = launch(start = CoroutineStart.UNDISPATCHED) { vm.actionErrors.collect { errors.add(it) } }
 
         vm.renameNode("workspace", "w7", "omega3")
         withTimeout(3000) { while (seenOps.none { it.contains("\"op\":\"rename\"") }) delay(20) }

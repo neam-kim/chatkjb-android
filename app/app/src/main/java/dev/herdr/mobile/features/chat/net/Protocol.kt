@@ -53,6 +53,41 @@ data class AlsoClose(
     val label: String = "",
 )
 
+@Serializable
+data class QServantQuota(
+    val used: Double? = null,
+    val label: String? = null,
+)
+
+@Serializable
+data class QServantModel(
+    val id: String,
+    val label: String = "",
+    val efforts: List<String> = emptyList(),
+    val defaultEffort: String? = null,
+    val quota: QServantQuota? = null,
+)
+
+@Serializable
+data class QServantReport(
+    val request: String = "",
+    val work: String = "",
+    val verification: String = "",
+    val changes: List<String> = emptyList(),
+    val commit: String? = null,
+    val result: String = "",
+    val success: Boolean = false,
+)
+
+@Serializable
+data class QServantJob(
+    val jobId: String,
+    val state: String,
+    val transcript: String? = null,
+    val report: QServantReport? = null,
+    val error: String? = null,
+)
+
 sealed interface ServerFrame {
     data object Welcome : ServerFrame
     data class Panes(val panes: List<Pane>) : ServerFrame
@@ -73,6 +108,89 @@ sealed interface ServerFrame {
     data class TermData(val termId: String, val data: String) : ServerFrame
     data class TermExit(val termId: String, val code: Int, val reason: String = "") : ServerFrame
     data class TermError(val reqId: String, val termId: String, val message: String) : ServerFrame
+    data class QServantCatalogResult(
+        val reqId: String,
+        val models: List<QServantModel>,
+        val defaultModel: String? = null,
+        val defaultEffort: String? = null,
+        val updatedAt: String? = null,
+    ) : ServerFrame
+    data class QServantJobFrame(val reqId: String?, val job: QServantJob) : ServerFrame
+    data class QServantError(
+        val reqId: String,
+        val jobId: String? = null,
+        val code: String,
+        val message: String,
+    ) : ServerFrame
+}
+
+private fun JsonElement.asTextOrNull(): String? = when (this) {
+    is JsonNull -> null
+    is JsonPrimitive -> contentOrNull
+    else -> toString()
+}
+
+private fun JsonObject.stringOrNull(key: String): String? = this[key]?.asTextOrNull()
+
+private fun JsonObject.stringOrEmpty(key: String): String = stringOrNull(key) ?: ""
+
+private fun JsonObject.doubleOrNull(key: String): Double? {
+    val el = this[key] as? JsonPrimitive ?: return null
+    return el.doubleOrNull
+}
+
+private fun JsonObject.booleanOrFalse(key: String): Boolean {
+    val el = this[key] as? JsonPrimitive ?: return false
+    return el.booleanOrNull ?: false
+}
+
+private fun JsonElement.asText(): String = asTextOrNull() ?: ""
+
+private fun parseQServantQuota(el: JsonElement?): QServantQuota? {
+    val o = el as? JsonObject ?: return null
+    return QServantQuota(used = o.doubleOrNull("used"), label = o.stringOrNull("label"))
+}
+
+private fun parseQServantModel(el: JsonElement): QServantModel? {
+    val o = el as? JsonObject ?: return null
+    val id = o.stringOrNull("id") ?: return null
+    val efforts = (o["efforts"] as? JsonArray)?.mapNotNull { it.asTextOrNull() } ?: emptyList()
+    return QServantModel(
+        id = id,
+        label = o.stringOrEmpty("label"),
+        efforts = efforts,
+        defaultEffort = o.stringOrNull("defaultEffort"),
+        quota = parseQServantQuota(o["quota"]),
+    )
+}
+
+private fun parseQServantReport(el: JsonElement?): QServantReport? {
+    val o = el as? JsonObject ?: return null
+    val changes = when (val value = o["changes"]) {
+        is JsonArray -> value.map { it.asText() }
+        null, JsonNull -> emptyList()
+        else -> listOf(value.asText())
+    }
+    return QServantReport(
+        request = o["request"]?.asText() ?: "",
+        work = o["work"]?.asText() ?: "",
+        verification = o["verification"]?.asText() ?: "",
+        changes = changes,
+        commit = o.stringOrNull("commit"),
+        result = o["result"]?.asText() ?: "",
+        success = o.booleanOrFalse("success"),
+    )
+}
+
+private fun parseQServantJob(el: JsonElement?): QServantJob {
+    val o = el as? JsonObject ?: return QServantJob(jobId = "", state = "")
+    return QServantJob(
+        jobId = o.stringOrEmpty("jobId"),
+        state = o.stringOrEmpty("state"),
+        transcript = o.stringOrNull("transcript"),
+        report = parseQServantReport(o["report"]),
+        error = o.stringOrNull("error"),
+    )
 }
 
 fun parseServerFrame(text: String): ServerFrame {
@@ -119,6 +237,23 @@ fun parseServerFrame(text: String): ServerFrame {
         "term_error" -> ServerFrame.TermError(
             obj["reqId"]?.jsonPrimitive?.content ?: "", obj["termId"]?.jsonPrimitive?.content ?: "",
             obj["message"]?.jsonPrimitive?.content ?: "")
+        "qservant_catalog_result" -> ServerFrame.QServantCatalogResult(
+            reqId = obj.stringOrEmpty("reqId"),
+            models = (obj["models"] as? JsonArray)?.mapNotNull { parseQServantModel(it) } ?: emptyList(),
+            defaultModel = obj.stringOrNull("defaultModel"),
+            defaultEffort = obj.stringOrNull("defaultEffort"),
+            updatedAt = obj.stringOrNull("updatedAt"),
+        )
+        "qservant_job" -> ServerFrame.QServantJobFrame(
+            reqId = obj.stringOrNull("reqId"),
+            job = parseQServantJob(obj["job"]),
+        )
+        "qservant_error" -> ServerFrame.QServantError(
+            reqId = obj.stringOrEmpty("reqId"),
+            jobId = obj.stringOrNull("jobId"),
+            code = obj.stringOrEmpty("code"),
+            message = obj.stringOrEmpty("message"),
+        )
         else -> ServerFrame.Unknown
     }
 }
@@ -191,4 +326,28 @@ object ClientMsg {
         obj("t" to JsonPrimitive("term_resize"), "termId" to JsonPrimitive(termId), "cols" to JsonPrimitive(cols), "rows" to JsonPrimitive(rows))
     fun termClose(termId: String) =
         obj("t" to JsonPrimitive("term_close"), "termId" to JsonPrimitive(termId))
+
+    fun qservantCatalog(reqId: String) =
+        obj("t" to JsonPrimitive("qservant_catalog"), "reqId" to JsonPrimitive(reqId))
+
+    fun qservantSubmit(reqId: String, model: String, effort: String, audioBase64: String) = obj(
+        "t" to JsonPrimitive("qservant_submit"),
+        "reqId" to JsonPrimitive(reqId),
+        "model" to JsonPrimitive(model),
+        "effort" to JsonPrimitive(effort),
+        "audioMime" to JsonPrimitive("audio/mp4"),
+        "audioBase64" to JsonPrimitive(audioBase64),
+    )
+
+    fun qservantStatus(reqId: String, jobId: String) = obj(
+        "t" to JsonPrimitive("qservant_status"),
+        "reqId" to JsonPrimitive(reqId),
+        "jobId" to JsonPrimitive(jobId),
+    )
+
+    fun qservantCancel(reqId: String, jobId: String) = obj(
+        "t" to JsonPrimitive("qservant_cancel"),
+        "reqId" to JsonPrimitive(reqId),
+        "jobId" to JsonPrimitive(jobId),
+    )
 }
