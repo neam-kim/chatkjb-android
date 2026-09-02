@@ -179,7 +179,7 @@ func (f *fakeHerdr) handle(c net.Conn) {
 		enc.Encode(map[string]any{"id": req.ID, "result": map[string]any{
 			"type": "agent_info",
 			"agent": map[string]any{
-				"name": "q-servant", "pane_id": target, "terminal_id": "term_agent",
+				"name": "codex-worker", "pane_id": target, "terminal_id": "term_agent",
 				"workspace_id": "w1F", "tab_id": "w1F:t1", "agent": "codex",
 				"agent_status": "idle", "focused": false, "interactive_ready": true,
 			}}})
@@ -198,7 +198,7 @@ func (f *fakeHerdr) handle(c net.Conn) {
 		enc.Encode(map[string]any{"id": req.ID, "result": map[string]any{
 			"type": "agent_list",
 			"agents": []map[string]any{{
-				"name": "q-servant", "pane_id": "w1F:p1", "terminal_id": "term_agent",
+				"name": "codex-worker", "pane_id": "w1F:p1", "terminal_id": "term_agent",
 				"workspace_id": "w1F", "tab_id": "w1F:t1", "agent": "codex",
 				"agent_status": "idle", "focused": false,
 			}}}})
@@ -208,7 +208,7 @@ func (f *fakeHerdr) handle(c net.Conn) {
 		enc.Encode(map[string]any{"id": req.ID, "result": map[string]any{
 			"type": "agent_prompted",
 			"agent": map[string]any{
-				"name": "q-servant", "pane_id": target, "terminal_id": "term_agent",
+				"name": "codex-worker", "pane_id": target, "terminal_id": "term_agent",
 				"workspace_id": "w1F", "tab_id": "w1F:t1", "agent": "codex",
 				"agent_status": "working", "focused": false,
 			}}})

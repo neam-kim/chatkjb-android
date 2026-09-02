@@ -3,7 +3,6 @@ package proto
 import (
 	"encoding/json"
 
-	"github.com/mohamed-essam/herdr-mobile/companion/internal/qservant"
 	"github.com/mohamed-essam/herdr-mobile/companion/internal/state"
 )
 
@@ -35,51 +34,12 @@ type ClientMsg struct {
 	Dest        string   `json:"dest"`
 	WorkspaceID string   `json:"workspaceId"`
 	TabID       string   `json:"tabId"`
-
-	// Q Servant fields
-	Model       string `json:"model"`
-	Effort      string `json:"effort"`
-	AudioMIME   string `json:"audioMime"`
-	AudioBase64 string `json:"audioBase64"`
-	JobID       string `json:"jobId"`
 }
 
 func ParseClient(b []byte) (ClientMsg, error) {
 	var m ClientMsg
 	err := json.Unmarshal(b, &m)
-	if err != nil {
-		return m, err
-	}
-	if m.AudioMIME == "" || m.AudioBase64 == "" {
-		var nested struct {
-			Audio struct {
-				MIMEType string `json:"mimeType"`
-				MIME     string `json:"mime"`
-				Data     string `json:"data"`
-				Audio    string `json:"audio"`
-				Base64   string `json:"base64"`
-			} `json:"audio"`
-		}
-		if json.Unmarshal(b, &nested) == nil {
-			if m.AudioMIME == "" {
-				if nested.Audio.MIMEType != "" {
-					m.AudioMIME = nested.Audio.MIMEType
-				} else {
-					m.AudioMIME = nested.Audio.MIME
-				}
-			}
-			if m.AudioBase64 == "" {
-				if nested.Audio.Data != "" {
-					m.AudioBase64 = nested.Audio.Data
-				} else if nested.Audio.Audio != "" {
-					m.AudioBase64 = nested.Audio.Audio
-				} else {
-					m.AudioBase64 = nested.Audio.Base64
-				}
-			}
-		}
-	}
-	return m, nil
+	return m, err
 }
 
 func must(v any) []byte { b, _ := json.Marshal(v); return b }
@@ -156,51 +116,4 @@ func TermExit(termID string, code int, reason string) []byte {
 }
 func TermError(reqID, termID, message string) []byte {
 	return must(map[string]any{"t": "term_error", "reqId": reqID, "termId": termID, "message": message})
-}
-
-type QServantJobPayload struct {
-	JobID      string `json:"jobId"`
-	State      string `json:"state"`
-	Transcript string `json:"transcript,omitempty"`
-	Report     any    `json:"report,omitempty"`
-	Error      string `json:"error,omitempty"`
-}
-
-func QServantCatalogResult(reqID string, models any, defaultModel, defaultEffort string, updatedAt string) []byte {
-	if models == nil {
-		models = []qservant.LiveModel{}
-	}
-	m := map[string]any{
-		"t":             "qservant_catalog_result",
-		"reqId":         reqID,
-		"models":        models,
-		"defaultModel":  defaultModel,
-		"defaultEffort": defaultEffort,
-		"updatedAt":     updatedAt,
-	}
-	return must(m)
-}
-
-func QServantJob(reqID string, p QServantJobPayload) []byte {
-	m := map[string]any{
-		"t":   "qservant_job",
-		"job": p,
-	}
-	if reqID != "" {
-		m["reqId"] = reqID
-	}
-	return must(m)
-}
-
-func QServantError(reqID, jobID, code, message string) []byte {
-	m := map[string]any{
-		"t":       "qservant_error",
-		"reqId":   reqID,
-		"code":    code,
-		"message": message,
-	}
-	if jobID != "" {
-		m["jobId"] = jobID
-	}
-	return must(m)
 }

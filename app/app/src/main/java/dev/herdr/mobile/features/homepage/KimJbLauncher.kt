@@ -60,7 +60,6 @@ val KimJbLauncherEntries: List<LauncherEntry> = listOf(
     LauncherEntry("Email", "Open Email", AppDestination.EMAIL),
     LauncherEntry("Finance", "Open Finance", AppDestination.FINANCE),
     LauncherEntry("ChatKJB", "Open ChatKJB", AppDestination.CHAT_KJB),
-    LauncherEntry("Q Servant", "Open Q Servant", AppDestination.Q_SERVANT),
 )
 
 /**
@@ -75,7 +74,6 @@ fun KimJbLauncher(
     onFinance: () -> Unit,
     onEmail: () -> Unit,
     onChat: () -> Unit,
-    onQServant: () -> Unit = {},
 ) {
     MaterialTheme(colorScheme = KimJbColorScheme) {
         Surface(
@@ -122,8 +120,6 @@ fun KimJbLauncher(
                     KimJbLink(title = "Finance", onClick = onFinance, description = "Open Finance")
                     Spacer(Modifier.height(12.dp))
                     KimJbLink(title = "ChatKJB", onClick = onChat, description = "Open ChatKJB")
-                    Spacer(Modifier.height(12.dp))
-                    KimJbLink(title = "Q Servant", onClick = onQServant, description = "Open Q Servant")
                 }
             }
         }

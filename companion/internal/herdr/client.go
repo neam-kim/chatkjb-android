@@ -65,39 +65,6 @@ func (c *Client) ListPanes(ctx context.Context) ([]PaneInfo, error) {
 	return res.Panes, nil
 }
 
-// ListPanesInWorkspace is pane.list filtered by workspace_id.
-func (c *Client) ListPanesInWorkspace(ctx context.Context, workspaceID string) ([]PaneInfo, error) {
-	params := map[string]any{}
-	if workspaceID != "" {
-		params["workspace_id"] = workspaceID
-	}
-	raw, err := c.Call(ctx, "pane.list", params)
-	if err != nil {
-		return nil, err
-	}
-	var res paneListResult
-	if err := json.Unmarshal(raw, &res); err != nil {
-		return nil, err
-	}
-	return res.Panes, nil
-}
-
-// FindWorkspaceByLabel lists workspaces and returns the unique exact-label match.
-func (c *Client) FindWorkspaceByLabel(ctx context.Context, label string) (WorkspaceInfo, error) {
-	ws, err := c.ListWorkspaces(ctx)
-	if err != nil {
-		return WorkspaceInfo{}, err
-	}
-	return SelectWorkspaceByLabel(ws, label)
-}
-
-// FindQServantWorkspace selects the unique workspace whose label is exactly
-// "Q Servant". Missing or duplicate labels are structured errors; there is
-// no fallback to "mobile" or any other workspace.
-func (c *Client) FindQServantWorkspace(ctx context.Context) (WorkspaceInfo, error) {
-	return c.FindWorkspaceByLabel(ctx, QServantWorkspaceLabel)
-}
-
 func (c *Client) ListWorkspaces(ctx context.Context) ([]WorkspaceInfo, error) {
 	raw, err := c.Call(ctx, "workspace.list", nil)
 	if err != nil {
@@ -222,7 +189,7 @@ func (c *Client) CreateTab(ctx context.Context, workspaceID string) (string, str
 }
 
 func (c *Client) SplitPane(ctx context.Context, targetPaneID, workspaceID, direction string) (string, string, error) {
-	params := map[string]any{"direction": direction, "focus": true}
+	params := map[string]any{"direction": direction, "focus": false}
 	if targetPaneID != "" {
 		params["target_pane_id"] = targetPaneID
 	}
@@ -260,109 +227,6 @@ func (c *Client) StartAgent(ctx context.Context, name string, argv []string, wor
 		return "", "", err
 	}
 	return res.Agent.PaneID, res.Agent.TerminalID, nil
-}
-
-// StartAgentOnPane starts an agent in an existing pane using the protocol-20
-// agent.start shape: name, kind, pane_id, args, timeout_ms.
-func (c *Client) StartAgentOnPane(ctx context.Context, req StartAgentRequest) (AgentInfo, error) {
-	if req.Kind == "" {
-		req.Kind = AgentKindCodex
-	}
-	raw, err := c.Call(ctx, "agent.start", req.params())
-	if err != nil {
-		return AgentInfo{}, err
-	}
-	var res agentStartedResult
-	if err := json.Unmarshal(raw, &res); err != nil {
-		return AgentInfo{}, err
-	}
-	return res.Agent, nil
-}
-
-// GetAgent inspects a live agent by name or pane id.
-func (c *Client) GetAgent(ctx context.Context, target string) (AgentInfo, error) {
-	raw, err := c.Call(ctx, "agent.get", map[string]any{"target": target})
-	if err != nil {
-		return AgentInfo{}, err
-	}
-	var res agentInfoResult
-	if err := json.Unmarshal(raw, &res); err != nil {
-		return AgentInfo{}, err
-	}
-	return res.Agent, nil
-}
-
-// WaitAgent uses Herdr's structural agent.wait operation so a newly started
-// process is actually registered and interactive before Q Servant prompts it.
-func (c *Client) WaitAgent(ctx context.Context, target string, wait AgentWaitOptions) (AgentInfo, error) {
-	params := map[string]any{"target": target}
-	if wait.TimeoutMS != nil {
-		params["timeout_ms"] = *wait.TimeoutMS
-	}
-	if len(wait.Until) > 0 {
-		params["until"] = wait.Until
-	}
-	raw, err := c.Call(ctx, "agent.wait", params)
-	if err != nil {
-		return AgentInfo{}, err
-	}
-	var res agentInfoResult
-	if err := json.Unmarshal(raw, &res); err != nil {
-		return AgentInfo{}, err
-	}
-	return res.Agent, nil
-}
-
-// ListAgents returns live agents from agent.list.
-func (c *Client) ListAgents(ctx context.Context) ([]AgentInfo, error) {
-	raw, err := c.Call(ctx, "agent.list", nil)
-	if err != nil {
-		return nil, err
-	}
-	var res agentListResult
-	if err := json.Unmarshal(raw, &res); err != nil {
-		return nil, err
-	}
-	return res.Agents, nil
-}
-
-// PromptAgent submits transcript text as a data field via agent.prompt.
-func (c *Client) PromptAgent(ctx context.Context, req PromptAgentRequest) (AgentInfo, error) {
-	raw, err := c.Call(ctx, "agent.prompt", req.params())
-	if err != nil {
-		return AgentInfo{}, err
-	}
-	var res agentInfoResult
-	if err := json.Unmarshal(raw, &res); err != nil {
-		return AgentInfo{}, err
-	}
-	return res.Agent, nil
-}
-
-// InterruptAgent issues Ctrl+C structurally through agent.send_keys.
-func (c *Client) InterruptAgent(ctx context.Context, target string) error {
-	_, err := c.Call(ctx, "agent.send_keys", map[string]any{
-		"target": target,
-		"keys":   []string{InterruptKeyCtrlC},
-	})
-	return err
-}
-
-// ReadAgent reads agent terminal output through agent.read.
-func (c *Client) ReadAgent(ctx context.Context, target, source string, lines int) (string, error) {
-	params := map[string]any{"target": target, "source": source}
-	if lines > 0 {
-		params["lines"] = lines
-	}
-	raw, err := c.Call(ctx, "agent.read", params)
-	if err != nil {
-		return "", err
-	}
-	var res agentReadResult
-	if err := json.Unmarshal(raw, &res); err != nil {
-		return "", err
-	}
-	return res.Read.Text, nil
 }
 
 func (c *Client) MovePane(ctx context.Context, paneID, dest, tabID, direction string) error {

@@ -3,7 +3,6 @@ package wsserver
 import (
 	"context"
 	"encoding/base64"
-	"errors"
 	"net/http"
 	"os"
 	"os/exec"
@@ -17,15 +16,12 @@ import (
 	"github.com/mohamed-essam/herdr-mobile/companion/internal/herdr"
 	"github.com/mohamed-essam/herdr-mobile/companion/internal/proto"
 	"github.com/mohamed-essam/herdr-mobile/companion/internal/pty"
-	"github.com/mohamed-essam/herdr-mobile/companion/internal/qservant"
 	"github.com/mohamed-essam/herdr-mobile/companion/internal/state"
 )
 
-// coder/websocket defaults to a 32 KiB read limit. Q Servant audio is sent as
-// base64 JSON and can legitimately be larger than that. Keep the limit tightly
-// coupled to the validated 10 MiB decoded-audio cap, with room for base64 and
-// the small JSON envelope.
-const qServantWebSocketReadLimit = int64(qservant.MaxAudioBytes*4/3 + (64 << 10))
+// coder/websocket defaults to a 32 KiB read limit, which is too small for
+// terminal attach payloads. 1 MiB is enough for ordinary PTY/RPC frames.
+const websocketReadLimit = int64(1 << 20)
 
 type HerdrRPC interface {
 	ReadPane(ctx context.Context, paneID, source string, lines int) (string, error)
@@ -47,25 +43,9 @@ type HerdrRPC interface {
 	ListWorktrees(ctx context.Context, workspaceID string) ([]herdr.WorktreeEntry, error)
 }
 
-type QServantCatalogInfo struct {
-	Models        any    `json:"models"`
-	DefaultModel  string `json:"defaultModel"`
-	DefaultEffort string `json:"defaultEffort"`
-	UpdatedAt     string `json:"updatedAt"`
-	Quota         any    `json:"quota,omitempty"`
-}
-
-type QServantController interface {
-	Catalog(ctx context.Context) (QServantCatalogInfo, error)
-	Submit(ctx context.Context, model, effort, audioMime, audioBase64 string) (proto.QServantJobPayload, error)
-	Status(ctx context.Context, jobID string) (proto.QServantJobPayload, bool)
-	Cancel(ctx context.Context, jobID string) (proto.QServantJobPayload, error)
-}
-
 type Server struct {
 	auth        Authorizer
 	rpc         HerdrRPC
-	qservant    QServantController
 	snapshot    func() []state.Pane
 	wsSnapshot  func() []state.Workspace
 	tabSnapshot func() []state.Tab
@@ -164,7 +144,6 @@ func (s *Server) SetTabSnapshot(fn func() []state.Tab)             { s.tabSnapsh
 func (s *Server) SetPushEndpoint(fn func(string))                  { s.onPush = fn }
 func (s *Server) SetHerdrInfo(ver string, prot int)                { s.herdrVer, s.herdrProt = ver, prot }
 func (s *Server) SetPoke(fn func())                                { s.poke = fn }
-func (s *Server) SetQServant(qc QServantController)                { s.qservant = qc }
 
 func (s *Server) Broadcast(frame []byte) {
 	s.mu.Lock()
@@ -191,7 +170,7 @@ func (s *Server) Handler() http.Handler {
 		if err != nil {
 			return
 		}
-		conn.SetReadLimit(qServantWebSocketReadLimit)
+		conn.SetReadLimit(websocketReadLimit)
 		c := &client{conn: conn, send: make(chan []byte, 64), sessions: map[string]*termSession{}}
 		// enqueue welcome + snapshot BEFORE the client is visible to Broadcast
 		c.send <- proto.Welcome(s.herdrVer, s.herdrProt)
@@ -302,74 +281,6 @@ func (s *Server) readLoop(ctx context.Context, c *client) {
 			c.send <- proto.Agents(m.ReqID, names)
 		case "close_impact":
 			s.handleCloseImpact(ctx, c, m)
-		case "qservant_catalog":
-			if s.qservant == nil {
-				c.send <- proto.QServantError(m.ReqID, "", "unavailable", "qservant unavailable")
-				continue
-			}
-			info, err := s.qservant.Catalog(ctx)
-			if err != nil {
-				c.send <- proto.QServantError(m.ReqID, "", "catalog_failed", err.Error())
-				continue
-			}
-			c.send <- proto.QServantCatalogResult(m.ReqID, info.Models, info.DefaultModel, info.DefaultEffort, info.UpdatedAt)
-		case "qservant_submit":
-			if s.qservant == nil {
-				c.send <- proto.QServantError(m.ReqID, "", "unavailable", "qservant unavailable")
-				continue
-			}
-			if m.Model == "" {
-				c.send <- proto.QServantError(m.ReqID, "", "invalid_request", "model is required")
-				continue
-			}
-			if m.AudioBase64 == "" {
-				c.send <- proto.QServantError(m.ReqID, "", "invalid_audio", "audio data is required")
-				continue
-			}
-			job, err := s.qservant.Submit(ctx, m.Model, m.Effort, m.AudioMIME, m.AudioBase64)
-			if err != nil {
-				code := "submit_failed"
-				if errors.Is(err, qservant.ErrModelNotFound) {
-					code = "model_not_found"
-				} else if errors.Is(err, qservant.ErrEffortNotFound) {
-					code = "effort_not_found"
-				} else if errors.Is(err, qservant.ErrAudioType) || errors.Is(err, qservant.ErrAudioTooLarge) || errors.Is(err, qservant.ErrAudioVersion) {
-					code = "invalid_audio"
-				}
-				c.send <- proto.QServantError(m.ReqID, "", code, err.Error())
-				continue
-			}
-			c.send <- proto.QServantJob(m.ReqID, job)
-		case "qservant_status":
-			if s.qservant == nil {
-				c.send <- proto.QServantError(m.ReqID, m.JobID, "unavailable", "qservant unavailable")
-				continue
-			}
-			if m.JobID == "" {
-				c.send <- proto.QServantError(m.ReqID, "", "invalid_request", "jobId is required")
-				continue
-			}
-			job, ok := s.qservant.Status(ctx, m.JobID)
-			if !ok {
-				c.send <- proto.QServantError(m.ReqID, m.JobID, "job_not_found", "job not found")
-				continue
-			}
-			c.send <- proto.QServantJob(m.ReqID, job)
-		case "qservant_cancel":
-			if s.qservant == nil {
-				c.send <- proto.QServantError(m.ReqID, m.JobID, "unavailable", "qservant unavailable")
-				continue
-			}
-			if m.JobID == "" {
-				c.send <- proto.QServantError(m.ReqID, "", "invalid_request", "jobId is required")
-				continue
-			}
-			job, err := s.qservant.Cancel(ctx, m.JobID)
-			if err != nil {
-				c.send <- proto.QServantError(m.ReqID, m.JobID, "cancel_failed", err.Error())
-				continue
-			}
-			c.send <- proto.QServantJob(m.ReqID, job)
 		}
 	}
 }

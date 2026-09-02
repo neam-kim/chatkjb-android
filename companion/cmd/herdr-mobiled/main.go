@@ -47,16 +47,12 @@ func main() {
 	// phone over the tailnet.
 	listen := flag.String("listen", "127.0.0.1:8787", "WS listen address (bind to your tailnet IP, e.g. `tailscale ip -4`, to reach it from the phone)")
 	poll := flag.Duration("poll", 1500*time.Millisecond, "pane.list poll interval")
-	stateDir := flag.String("state-dir", "", "path to state directory for qservant jobs")
-	configPath := flag.String("config", "", "path to opencodex config.json")
 	flag.Parse()
 
 	e := engine.New(engine.Config{
 		SocketPath:   *socket,
 		ListenAddr:   *listen,
 		PollInterval: *poll,
-		StateDir:     *stateDir,
-		ConfigPath:   *configPath,
 	})
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
