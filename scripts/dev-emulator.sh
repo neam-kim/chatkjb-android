@@ -62,7 +62,7 @@ sleep 1
 
 # 4. Install the APK.
 log "Installing APK…"
-adb install -r "$APK" >/dev/null
+adb install --user 0 -r "$APK" >/dev/null
 
 # 5. Seed the companion URL straight into the app's DataStore, so no onboarding
 #    typing is needed. The file is androidx.datastore's raw PreferenceMap proto:

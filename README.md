@@ -57,6 +57,11 @@ git clone --recurse-submodules https://github.com/neam-kim/ChatKJB.git
 cd ChatKJB/app
 ANDROID_HOME=$HOME/Android/Sdk ./gradlew :app:assembleDebug
 # app/app/build/outputs/apk/debug/app-debug.apk
+
+# 물리 기기에는 반드시 primary user 0 전용 설치 guard를 사용합니다.
+# clone/work profile이 있으면 설치 전후 검증이 fail closed됩니다.
+ANDROID_HOME=$HOME/Android/Sdk ../scripts/install-android-primary-user.sh \
+  "$PWD/app/build/outputs/apk/debug/app-debug.apk" [adb-serial]
 ```
 
 기존 clone은 `git submodule update --init --recursive`로 KJBMail을 가져오십시오. KJBMail은 [`neam-kim/KJBMail`](https://github.com/neam-kim/KJBMail)의 공개 source-only 저장소를 고정 커밋 `5082a97c66aa76d447ed8c5d4e5111db37cdb3ad`로 연결한 submodule이며, 기본 Gradle composite dependency로 사용됩니다. 다른 checkout을 사용하려면 `-Pkjbmail.dir=...` 또는 `KJBMAIL_DIR`로 명시할 수 있습니다. 앱에서 companion 주소는 `ws://<private-address>:8787/`로 설정합니다.
