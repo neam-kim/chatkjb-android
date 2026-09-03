@@ -2,7 +2,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
     <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
         tools:node="merge"
@@ -38,17 +37,7 @@
 
         <activity
             android:name="net.thunderbird.app.common.MainActivity"
+            tools:ignore="MissingClass"
             tools:node="remove" />
-
-        <receiver
-            android:name=".core.push.UnifiedPushReceiver"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="org.unifiedpush.android.connector.MESSAGE" />
-                <action android:name="org.unifiedpush.android.connector.NEW_ENDPOINT" />
-                <action android:name="org.unifiedpush.android.connector.REGISTRATION_FAILED" />
-                <action android:name="org.unifiedpush.android.connector.UNREGISTERED" />
-            </intent-filter>
-        </receiver>
     </application>
 </manifest>

@@ -5,15 +5,15 @@ plugins {
 }
 
 android {
-    namespace = "dev.herdr.mobile"
+    namespace = "com.neamkim.chatkjb"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "dev.herdr.mobile"
+        applicationId = "com.neamkim.chatkjb"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 3
+        versionName = "1.2.0"
     }
 
     buildTypes {
@@ -56,19 +56,10 @@ kotlin {
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
-    implementation(libs.androidx.browser)
-    implementation(libs.androidx.lifecycle.viewmodel.compose)
-    implementation(libs.androidx.lifecycle.runtime.compose)
+    implementation(libs.androidx.webkit)
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.ui)
     implementation(libs.compose.material3)
-    implementation(libs.compose.material.icons)
-    implementation(libs.okhttp)
-    implementation(libs.kotlinx.serialization.json)
-    implementation(libs.kotlinx.coroutines.core)
-    implementation(libs.datastore.preferences)
-    implementation(libs.unifiedpush)
-    implementation(project(":terminal-view"))
     implementation("dev.herdr.kjbmail:mail-host")
 
     testImplementation(libs.junit)

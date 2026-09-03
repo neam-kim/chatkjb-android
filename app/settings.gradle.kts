@@ -38,5 +38,3 @@ includeBuild(kjbmailDir) {
 
 
 include(":app")
-include(":terminal-emulator")
-include(":terminal-view")

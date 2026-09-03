@@ -39,6 +39,18 @@ func isNonLoopbackBind(addr string) bool {
 	}
 }
 
+// parseSpaces splits the --notify-spaces list, dropping empties so that an
+// explicitly empty value means "every space" rather than "no space".
+func parseSpaces(v string) []string {
+	var out []string
+	for _, part := range strings.Split(v, ",") {
+		if s := strings.TrimSpace(part); s != "" {
+			out = append(out, s)
+		}
+	}
+	return out
+}
+
 func main() {
 	socket := flag.String("socket", defaultSocket(), "path to herdr.sock")
 	// Default to loopback: v1 has NO API auth and the API can inject terminal
@@ -47,12 +59,17 @@ func main() {
 	// phone over the tailnet.
 	listen := flag.String("listen", "127.0.0.1:8787", "WS listen address (bind to your tailnet IP, e.g. `tailscale ip -4`, to reach it from the phone)")
 	poll := flag.Duration("poll", 1500*time.Millisecond, "pane.list poll interval")
+	// Default to General only: OCA manager/worker spaces finish constantly and
+	// their notifications drown the ones the owner actually acts on.
+	notifySpaces := flag.String("notify-spaces", "General",
+		"comma-separated Herdr space labels allowed to raise notifications; empty means all spaces")
 	flag.Parse()
 
 	e := engine.New(engine.Config{
 		SocketPath:   *socket,
 		ListenAddr:   *listen,
 		PollInterval: *poll,
+		NotifySpaces: parseSpaces(*notifySpaces),
 	})
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)

@@ -21,6 +21,10 @@ type Config struct {
 	ListenAddr       string
 	PollInterval     time.Duration
 	DebounceFinished time.Duration
+	// NotifySpaces restricts push notifications to the named Herdr spaces
+	// (workspace labels), case-insensitively. Empty means notify for every
+	// space. OCA/subagent spaces are excluded by listing only "General".
+	NotifySpaces []string
 }
 
 type Engine struct {
@@ -198,15 +202,20 @@ func (e *Engine) pollOnce(ctx context.Context) {
 }
 
 func (e *Engine) handleTransition(ctx context.Context, tr state.Transition) {
-	body := ""
-	if tr.To == "blocked" {
-		if txt, err := e.client.ReadPane(ctx, tr.PaneID, "detection", 40); err == nil {
-			body = lastNonEmptyLine(txt)
-		}
-	}
-	push, ok := notify.ShouldNotify(tr, e.displayName(tr.PaneID), body)
+	push, ok := notify.ShouldNotify(tr, e.displayName(tr.PaneID), "")
 	if !ok {
 		return
+	}
+	// "clear" carries no text and only dismisses an existing notification, so
+	// it must still reach the phone even for a muted space; otherwise a stale
+	// blocked notification would never be retracted.
+	if push.Kind != "clear" && !e.spaceNotifies(tr.WorkspaceID) {
+		return
+	}
+	if tr.To == "blocked" {
+		if txt, err := e.client.ReadPane(ctx, tr.PaneID, "detection", 40); err == nil {
+			push.Body = lastNonEmptyLine(txt)
+		}
 	}
 	if push.Kind == "finished" {
 		// debounce: only fire if still not working after the window
@@ -219,12 +228,63 @@ func (e *Engine) handleTransition(ctx context.Context, tr state.Transition) {
 						return // resumed; suppress
 					}
 				}
+				// Summarize after the debounce so the body reflects the
+				// settled final output rather than a mid-run frame. Use the
+				// unwrapped snapshot: the wrapped view splits a sentence
+				// across rows, which would surface a mid-sentence fragment.
+				// The socket API spells this "recent_unwrapped"; the CLI's
+				// hyphenated spelling is rejected over the wire.
+				push.Body = e.summarizePane(ctx, tr.PaneID)
 				e.fire(ctx, push)
 			}
 		}()
 		return
 	}
 	e.fire(ctx, push)
+}
+
+// summarizePane builds the short "what finished" line for a completed pane.
+// It prefers the unwrapped snapshot so hard-wrapped prose is not cut
+// mid-sentence, and falls back to the wrapped view when a herdr build does
+// not offer that source.
+func (e *Engine) summarizePane(ctx context.Context, paneID string) string {
+	for _, source := range []string{"recent_unwrapped", "recent", "detection"} {
+		txt, err := e.client.ReadPane(ctx, paneID, source, 60)
+		if err != nil {
+			continue
+		}
+		if s := notify.Summarize(txt); s != "" {
+			return s
+		}
+	}
+	return ""
+}
+
+// spaceNotifies reports whether a workspace is allowed to raise notifications.
+// The match is on the space label from herdr (e.g. "General"), because
+// workspace ids like "w1C" are unstable across restarts. A workspace missing
+// from the snapshot is treated as not allowed once a filter is configured, so
+// newly spawned OCA spaces stay silent until they are identified.
+func (e *Engine) spaceNotifies(workspaceID string) bool {
+	if len(e.cfg.NotifySpaces) == 0 {
+		return true
+	}
+	label := ""
+	for _, w := range e.store.Workspaces() {
+		if w.WorkspaceID == workspaceID {
+			label = w.Label
+			break
+		}
+	}
+	if label == "" {
+		return false
+	}
+	for _, allowed := range e.cfg.NotifySpaces {
+		if strings.EqualFold(strings.TrimSpace(allowed), label) {
+			return true
+		}
+	}
+	return false
 }
 
 // displayName returns the friendly pane name for notification titles: the cwd

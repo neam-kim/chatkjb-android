@@ -1,0 +1,101 @@
+package com.neamkim.chatkjb.integration
+
+import android.os.Bundle
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
+import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import com.neamkim.chatkjb.BuildConfig
+import com.neamkim.chatkjb.core.navigation.AppDestination
+import com.neamkim.chatkjb.core.navigation.EmailRoute
+import com.neamkim.chatkjb.core.navigation.HerdrRoute
+import com.neamkim.chatkjb.core.navigation.HomepageRoute
+import com.neamkim.chatkjb.core.navigation.parseDestinationIntent
+import com.neamkim.chatkjb.features.homepage.HomepageWebScreen
+import com.neamkim.chatkjb.features.homepage.KimJbLauncher
+import com.neamkim.chatkjb.features.herdr.EmbeddedHerdrScreen
+
+class MainActivity : ComponentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
+
+        val requestedDestination = parseDestinationIntent(intent)
+        val setupFragment = intent.data
+            ?.takeIf { requestedDestination == AppDestination.CHAT_KJB }
+            ?.encodedFragment
+
+        setContent {
+            var destination by remember { mutableStateOf(requestedDestination) }
+            var emailError by remember { mutableStateOf(false) }
+
+            LaunchedEffect(destination) {
+                when (destination) {
+                    AppDestination.EMAIL -> {
+                        destination = null
+                        emailError = !openEmail()
+                    }
+                    else -> Unit
+                }
+            }
+
+            MaterialTheme {
+                if (destination == AppDestination.CHAT_KJB) {
+                    EmbeddedHerdrScreen(
+                        startUrl = HerdrRoute.embeddedUrl(setupFragment),
+                        onExit = { destination = null },
+                    )
+                } else if (destination == AppDestination.HOMEPAGE || destination == AppDestination.FINANCE) {
+                    HomepageWebScreen(
+                        onExit = { destination = null },
+                        startUrl = if (destination == AppDestination.FINANCE) {
+                            HomepageRoute.financeUrl
+                        } else {
+                            HomepageRoute.canonicalUrl
+                        },
+                        onDestination = { target ->
+                            when (target) {
+                                AppDestination.EMAIL -> {
+                                    emailError = !openEmail()
+                                    destination = null
+                                }
+                                AppDestination.CHAT_KJB -> {
+                                    destination = AppDestination.CHAT_KJB
+                                }
+                                AppDestination.HOME -> destination = null
+                                AppDestination.HOMEPAGE, AppDestination.FINANCE -> Unit
+                            }
+                        },
+                    )
+                } else {
+                    KimJbLauncher(
+                        emailError = emailError,
+                        onHomepage = { destination = AppDestination.HOMEPAGE },
+                        onFinance = {
+                            emailError = false
+                            destination = AppDestination.FINANCE
+                        },
+                        onEmail = { emailError = !openEmail() },
+                        onChat = {
+                            emailError = false
+                            destination = AppDestination.CHAT_KJB
+                        },
+                    )
+                    BackHandler { finish() }
+                }
+            }
+        }
+    }
+
+    private fun openEmail(): Boolean = runCatching {
+        startActivity(EmailRoute.nativeLaunchIntent(BuildConfig.APPLICATION_ID))
+    }.isSuccess
+
+}

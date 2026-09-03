@@ -6,7 +6,7 @@ set -euo pipefail
 
 APK_PATH="${1:-}"
 DEVICE_SERIAL="${2:-}"
-PACKAGE_NAME="dev.herdr.mobile"
+PACKAGE_NAME="com.neamkim.chatkjb"
 
 if [[ -z "$APK_PATH" || ! -f "$APK_PATH" ]]; then
   echo "usage: $0 /absolute/path/to/app-debug.apk [adb-serial]" >&2

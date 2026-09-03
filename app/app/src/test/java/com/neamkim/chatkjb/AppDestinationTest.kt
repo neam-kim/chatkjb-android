@@ -1,0 +1,97 @@
+package com.neamkim.chatkjb
+
+import com.neamkim.chatkjb.core.navigation.AppDestination
+import com.neamkim.chatkjb.core.navigation.HerdrRoute
+import com.neamkim.chatkjb.core.navigation.HomepageRoute
+import com.neamkim.chatkjb.core.navigation.parseDestinationUri
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+class AppDestinationTest {
+    @Test fun herdrSurfaceIsBundledInsideTheApp() {
+        assertEquals(
+            "https://appassets.androidplatform.net/assets/herdr/index.html",
+            HerdrRoute.embeddedUrl,
+        )
+        assertEquals(
+            "https://appassets.androidplatform.net/assets/herdr/index.html#setup=secret",
+            HerdrRoute.embeddedUrl("setup=secret"),
+        )
+        assertEquals(HerdrRoute.embeddedUrl, HerdrRoute.embeddedUrl("x".repeat(4_097)))
+    }
+
+    @Test fun homepageRouteOnlyAllowsCanonicalHttpsOrigin() {
+        assertTrue(HomepageRoute.isAllowed("https://kimjb.com/"))
+        assertTrue(HomepageRoute.isAllowed("https://KIMJB.COM/path"))
+        assertFalse(HomepageRoute.isAllowed("http://kimjb.com/"))
+        assertFalse(HomepageRoute.isAllowed("https://evil.example/"))
+        assertFalse(HomepageRoute.isAllowed("https://kimjb.com.evil.example/"))
+    }
+
+    @Test fun signInHostsAreLimitedToGoogleAccountsOverHttps() {
+        assertTrue(HomepageRoute.isSignInHost("https://accounts.google.com/o/oauth2/v2/auth"))
+        assertTrue(HomepageRoute.isSignInHost("https://ACCOUNTS.GOOGLE.COM/signin"))
+        assertTrue(HomepageRoute.isSignInHost("https://accounts.youtube.com/accounts/SetSID"))
+        assertFalse(HomepageRoute.isSignInHost("http://accounts.google.com/"))
+        assertFalse(HomepageRoute.isSignInHost("https://accounts.google.com.evil.example/"))
+        assertFalse(HomepageRoute.isSignInHost("https://evil.example/accounts.google.com"))
+        assertFalse(HomepageRoute.isSignInHost("https://mail.google.com/"))
+        assertFalse(HomepageRoute.isSignInHost("https://kimjb.com/"))
+    }
+
+    /** Regression: bouncing this leg to the system browser ends the flow on Google 400. */
+    @Test fun signInFollowsGoogleCountryDomains() {
+        assertTrue(HomepageRoute.isSignInHost("https://accounts.google.co.jp/signin/v2/x"))
+        assertTrue(HomepageRoute.isSignInHost("https://accounts.google.co.kr/"))
+        assertTrue(HomepageRoute.isSignInHost("https://accounts.google.de/"))
+        assertTrue(HomepageRoute.isSignInHost("https://accounts.google.com.au/"))
+        // Only the accounts host, and only registry-shaped TLDs.
+        assertFalse(HomepageRoute.isSignInHost("https://accounts.google.evil/"))
+        assertFalse(HomepageRoute.isSignInHost("https://accounts.google.co.jp.evil.example/"))
+        assertFalse(HomepageRoute.isSignInHost("https://mail.google.co.jp/"))
+        assertFalse(HomepageRoute.isSignInHost("https://google.co.jp/"))
+        assertFalse(HomepageRoute.isSignInHost("https://evil.accounts.google.co.jp.example/"))
+    }
+
+    @Test fun inAppNavigationCoversSiteAndSignInOnly() {
+        assertTrue(HomepageRoute.isInAppNavigation("https://kimjb.com/members"))
+        assertTrue(HomepageRoute.isInAppNavigation("https://accounts.google.com/o/oauth2/v2/auth"))
+        assertFalse(HomepageRoute.isInAppNavigation("https://evil.example/"))
+        assertFalse(HomepageRoute.isInAppNavigation("mailto:contact@kimjb.com"))
+        assertFalse(HomepageRoute.isInAppNavigation("kimjb://open/email"))
+    }
+
+    @Test fun parsesOnlyKnownDestinationLinks() {
+        assertEquals(AppDestination.HOME, parseDestinationUri("kimjb://open/home"))
+        assertEquals(AppDestination.EMAIL, parseDestinationUri("kimjb://open/email"))
+        assertEquals(AppDestination.CHAT_KJB, parseDestinationUri("kimjb://open/chat"))
+        assertEquals(null, parseDestinationUri("kimjb://open/other"))
+        assertEquals(null, parseDestinationUri("https://kimjb.com/"))
+        assertEquals(null, parseDestinationUri(null))
+    }
+
+    @Test fun homepageWebSurfaceIsNotReachableByDeepLink() {
+        assertEquals(null, parseDestinationUri("kimjb://open/homepage"))
+        assertEquals(null, parseDestinationUri("kimjb://open/web"))
+    }
+
+    /** Finance left the site's Information menu, so the app launcher opens it directly. */
+    @Test fun financeUrlStaysOnTheCanonicalOrigin() {
+        assertEquals("https://kimjb.com/finance/", HomepageRoute.financeUrl)
+        assertTrue(HomepageRoute.isAllowed(HomepageRoute.financeUrl))
+        assertTrue(HomepageRoute.isInAppNavigation(HomepageRoute.financeUrl))
+    }
+
+    @Test fun financeIsNotReachableByDeepLink() {
+        assertEquals(null, parseDestinationUri("kimjb://open/finance"))
+        assertEquals(null, parseDestinationUri("kimjb://open/web"))
+    }
+
+    @Test fun legacyKjbmailSchemeOpensEmail() {
+        assertEquals(AppDestination.EMAIL, parseDestinationUri("kjbmail://open"))
+        assertEquals(AppDestination.EMAIL, parseDestinationUri("kjbmail://open/"))
+        assertEquals(null, parseDestinationUri("kjbmail://elsewhere"))
+    }
+}

@@ -1,0 +1,10 @@
+ChatKJB embedded agent UI
+
+Upstream: https://github.com/0cv/herdr-mobile-relay
+Upstream commit: 7400537
+Modified source: https://github.com/neam-kim/chatkjb-android
+License: GNU Affero General Public License v3.0 or later
+
+Changes: ChatKJB branding, kimjb.com-derived light visual theme, Android-relative
+asset paths, in-app source notices, and a tailnet-only connection policy. The
+encrypted WebSocket relay protocol remains upstream-compatible.

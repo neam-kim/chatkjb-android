@@ -1,11 +1,25 @@
 # Third-party notices
 
-ChatKJB is based on herdr-mobile and is licensed under **AGPL-3.0-or-later** (see [`LICENSE`](LICENSE)).
+ChatKJB is licensed under **AGPL-3.0-or-later** (see [`LICENSE`](LICENSE)).
 It bundles the following third-party components, each under its own license.
 
-## Termux terminal emulator and view
+## Herdr Mobile Relay embedded frontend
 
-- **Modules:** `app/terminal-emulator/` (`com.termux.terminal`) and
+- **Bundled output:** `app/app/src/main/assets/herdr/`
+- **Source:** [0cv/herdr-mobile-relay](https://github.com/0cv/herdr-mobile-relay), based on commit `7400537`
+- **Local source branch:** `/Volumes/NEAM_SSD/herdr-mobile-relay` branch `chatkjb-embedded`
+- **License:** AGPL-3.0-or-later
+- **Copyright:** © 2026 Christophe Vidal and contributors
+
+ChatKJB modifies the product name, default visual theme, legal/source links,
+asset paths, and a deployment-specific Content Security Policy for an
+Android-embedded build. The encrypted WebSocket and Herdr protocol behavior
+remain upstream-compatible; this deployment restricts ingress to its private
+Tailscale tailnet and does not activate the optional gateway/WebRTC path.
+
+## Termux terminal emulator and view source
+
+- **Retained source modules (not linked into the current APK):** `app/terminal-emulator/` (`com.termux.terminal`) and
   `app/terminal-view/` (`com.termux.view`)
 - **Source:** [termux/termux-app](https://github.com/termux/termux-app)
 - **License:** GPL-3.0-only. These modules incorporate code from Jack Palevich's
