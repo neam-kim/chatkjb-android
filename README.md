@@ -11,7 +11,7 @@ ChatKJB는 `Kim JongBeom` launcher를 시작점으로 Homepage, KJBMail, Finance
 
 ## 제공 기능
 
-- **Kim JongBeom launcher**: Homepage, Email, Finance, ChatKJB 진입점과 `kimjb://open/...` / 레거시 `kjbmail://open` deep link.
+- **Kim JongBeom launcher**: Homepage, Email, Finance, ChatKJB 진입점과 로고로 들어가는 별도 tailnet 전용 AutoBot/Server 설정 페이지, `kimjb://open/...` / 레거시 `kjbmail://open` deep link.
 - **Homepage**: 앱 내부 화면에서 Homepage를 열고 launcher로 돌아옵니다.
 - **Email / KJBMail**: `dev.herdr.kjbmail:mail-host`의 Thunderbird Mail host를 통합해 `MailEntryActivity`를 실행합니다. KJBMail 소스는 이 저장소에 포함되지 않습니다.
 - **ChatKJB agent UI**: workspace/tab/agent 상태, 대화 기록, terminal, 승인·질문 응답, 파일 첨부와 relay 설정을 앱 안에서 제공합니다.

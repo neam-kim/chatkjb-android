@@ -3,7 +3,9 @@ package com.neamkim.chatkjb
 import com.neamkim.chatkjb.core.navigation.AppDestination
 import com.neamkim.chatkjb.core.navigation.HerdrRoute
 import com.neamkim.chatkjb.core.navigation.HomepageRoute
+import com.neamkim.chatkjb.core.navigation.ManagementConsoleRoute
 import com.neamkim.chatkjb.core.navigation.parseDestinationUri
+import com.neamkim.chatkjb.features.homepage.KimJbConsoleEntries
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -93,5 +95,52 @@ class AppDestinationTest {
         assertEquals(AppDestination.EMAIL, parseDestinationUri("kjbmail://open"))
         assertEquals(AppDestination.EMAIL, parseDestinationUri("kjbmail://open/"))
         assertEquals(null, parseDestinationUri("kjbmail://elsewhere"))
+    }
+
+    @Test fun managementConsolesStayOnTheirFixedTailnetPaths() {
+        assertTrue(
+            ManagementConsoleRoute.isAllowed(
+                "https://neam-macmini.taild81d38.ts.net:8443/autobot/api/services",
+                ManagementConsoleRoute.autoBotUrl,
+            ),
+        )
+        assertTrue(
+            ManagementConsoleRoute.isAllowed(
+                "https://neam-macmini.taild81d38.ts.net:8443/server/style.css",
+                ManagementConsoleRoute.serverUrl,
+            ),
+        )
+        assertFalse(
+            ManagementConsoleRoute.isAllowed(
+                ManagementConsoleRoute.serverUrl,
+                ManagementConsoleRoute.autoBotUrl,
+            ),
+        )
+        assertFalse(
+            ManagementConsoleRoute.isAllowed(
+                "https://evil.example/autobot/",
+                ManagementConsoleRoute.autoBotUrl,
+            ),
+        )
+        assertFalse(
+            ManagementConsoleRoute.isAllowed(
+                "http://neam-macmini.taild81d38.ts.net:8443/autobot/",
+                ManagementConsoleRoute.autoBotUrl,
+            ),
+        )
+        assertFalse(
+            ManagementConsoleRoute.isAllowed(
+                "https://neam-macmini.taild81d38.ts.net:8443/autobot/../server/",
+                ManagementConsoleRoute.autoBotUrl,
+            ),
+        )
+    }
+
+    @Test fun logoGatedConsoleEntriesKeepTheirRequestedOrder() {
+        assertEquals(listOf("AutoBot", "Server"), KimJbConsoleEntries.map { it.title })
+        assertEquals(
+            listOf(AppDestination.AUTOBOT, AppDestination.SERVER),
+            KimJbConsoleEntries.map { it.destination },
+        )
     }
 }

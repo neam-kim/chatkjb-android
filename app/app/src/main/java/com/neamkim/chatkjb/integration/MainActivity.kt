@@ -17,8 +17,11 @@ import com.neamkim.chatkjb.core.navigation.AppDestination
 import com.neamkim.chatkjb.core.navigation.EmailRoute
 import com.neamkim.chatkjb.core.navigation.HerdrRoute
 import com.neamkim.chatkjb.core.navigation.HomepageRoute
+import com.neamkim.chatkjb.core.navigation.ManagementConsoleRoute
 import com.neamkim.chatkjb.core.navigation.parseDestinationIntent
+import com.neamkim.chatkjb.features.console.ManagementConsoleScreen
 import com.neamkim.chatkjb.features.homepage.HomepageWebScreen
+import com.neamkim.chatkjb.features.homepage.KimJbConsoleSettings
 import com.neamkim.chatkjb.features.homepage.KimJbLauncher
 import com.neamkim.chatkjb.features.herdr.EmbeddedHerdrScreen
 
@@ -52,6 +55,21 @@ class MainActivity : ComponentActivity() {
                         startUrl = HerdrRoute.embeddedUrl(setupFragment),
                         onExit = { destination = null },
                     )
+                } else if (destination == AppDestination.AUTOBOT || destination == AppDestination.SERVER) {
+                    ManagementConsoleScreen(
+                        startUrl = if (destination == AppDestination.AUTOBOT) {
+                            ManagementConsoleRoute.autoBotUrl
+                        } else {
+                            ManagementConsoleRoute.serverUrl
+                        },
+                        onExit = { destination = AppDestination.CONSOLE_SETTINGS },
+                    )
+                } else if (destination == AppDestination.CONSOLE_SETTINGS) {
+                    KimJbConsoleSettings(
+                        onAutoBot = { destination = AppDestination.AUTOBOT },
+                        onServer = { destination = AppDestination.SERVER },
+                    )
+                    BackHandler { destination = null }
                 } else if (destination == AppDestination.HOMEPAGE || destination == AppDestination.FINANCE) {
                     HomepageWebScreen(
                         onExit = { destination = null },
@@ -70,7 +88,12 @@ class MainActivity : ComponentActivity() {
                                     destination = AppDestination.CHAT_KJB
                                 }
                                 AppDestination.HOME -> destination = null
-                                AppDestination.HOMEPAGE, AppDestination.FINANCE -> Unit
+                                AppDestination.HOMEPAGE,
+                                AppDestination.FINANCE,
+                                AppDestination.CONSOLE_SETTINGS,
+                                AppDestination.AUTOBOT,
+                                AppDestination.SERVER,
+                                -> Unit
                             }
                         },
                     )
@@ -86,6 +109,10 @@ class MainActivity : ComponentActivity() {
                         onChat = {
                             emailError = false
                             destination = AppDestination.CHAT_KJB
+                        },
+                        onConsoleSettings = {
+                            emailError = false
+                            destination = AppDestination.CONSOLE_SETTINGS
                         },
                     )
                     BackHandler { finish() }

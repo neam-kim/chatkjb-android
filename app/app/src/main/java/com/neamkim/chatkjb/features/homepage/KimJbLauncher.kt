@@ -1,6 +1,8 @@
 package com.neamkim.chatkjb.features.homepage
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,7 +13,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -21,7 +22,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -62,6 +65,11 @@ val KimJbLauncherEntries: List<LauncherEntry> = listOf(
     LauncherEntry("ChatKJB", "Open ChatKJB", AppDestination.CHAT_KJB),
 )
 
+val KimJbConsoleEntries: List<LauncherEntry> = listOf(
+    LauncherEntry("AutoBot", "Open AutoBot console", AppDestination.AUTOBOT),
+    LauncherEntry("Server", "Open Server console", AppDestination.SERVER),
+)
+
 /**
  * Native launcher styled after kimjb.com's current homepage: light canvas,
  * centered monogram, restrained typography, and bordered white link rows.
@@ -74,6 +82,7 @@ fun KimJbLauncher(
     onFinance: () -> Unit,
     onEmail: () -> Unit,
     onChat: () -> Unit,
+    onConsoleSettings: () -> Unit,
 ) {
     MaterialTheme(colorScheme = KimJbColorScheme) {
         Surface(
@@ -91,7 +100,13 @@ fun KimJbLauncher(
                 Image(
                     painter = painterResource(R.drawable.kimjb_logo),
                     contentDescription = "Kim JongBeom logo",
-                    modifier = Modifier.height(72.dp),
+                    modifier = Modifier
+                        .height(72.dp)
+                        .clickable(onClick = onConsoleSettings)
+                        .semantics {
+                            role = Role.Button
+                            contentDescription = "Open console settings"
+                        },
                 )
                 Spacer(Modifier.height(12.dp))
                 Text(
@@ -121,6 +136,40 @@ fun KimJbLauncher(
                     Spacer(Modifier.height(12.dp))
                     KimJbLink(title = "ChatKJB", onClick = onChat, description = "Open ChatKJB")
                 }
+            }
+        }
+    }
+}
+
+/** Hidden console-settings destination reached only by tapping the launcher logo. */
+@Composable
+fun KimJbConsoleSettings(
+    onAutoBot: () -> Unit,
+    onServer: () -> Unit,
+) {
+    MaterialTheme(colorScheme = KimJbColorScheme) {
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = KimJbBackground,
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 24.dp, vertical = 28.dp),
+                horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+            ) {
+                KimJbLink(
+                    title = "AutoBot",
+                    onClick = onAutoBot,
+                    description = "Open AutoBot console",
+                )
+                Spacer(Modifier.height(12.dp))
+                KimJbLink(
+                    title = "Server",
+                    onClick = onServer,
+                    description = "Open Server console",
+                )
             }
         }
     }

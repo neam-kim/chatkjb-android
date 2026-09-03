@@ -6,6 +6,10 @@ All notable changes to this project are documented here. The format is based on
 
 ## Unreleased
 
+### Added
+- A logo-gated console settings destination with only AutoBot and Server entries,
+  opening the two Mac consoles over the existing tailnet-only Herdr HTTPS endpoint.
+
 ## [1.0.0] - 2026-07-12
 
 Initial public release of the ChatKJB Android launcher and agent companion.
