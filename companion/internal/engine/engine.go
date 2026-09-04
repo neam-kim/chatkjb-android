@@ -2,8 +2,15 @@ package engine
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/subtle"
 	"encoding/json"
+	"errors"
+	"fmt"
+	"log"
 	"net/http"
+	"net/url"
+	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -21,6 +28,16 @@ type Config struct {
 	ListenAddr       string
 	PollInterval     time.Duration
 	DebounceFinished time.Duration
+	// PushEndpointPath persists the phone's UnifiedPush endpoint across daemon
+	// restarts. Empty keeps the old in-memory-only behaviour, which is useful
+	// for isolated tests.
+	PushEndpointPath string
+	// PushRegistrationTokenPath stores the bearer token accepted by the narrow
+	// HTTPS endpoint used by the current ChatKJB app to register UnifiedPush.
+	PushRegistrationTokenPath string
+	// PushEndpointOrigin optionally restricts registered endpoints to one
+	// trusted UnifiedPush distributor origin.
+	PushEndpointOrigin string
 	// NotifySpaces restricts push notifications to the named Herdr spaces
 	// (workspace labels), case-insensitively. Empty means notify for every
 	// space. OCA/subagent spaces are excluded by listing only "General".
@@ -33,8 +50,9 @@ type Engine struct {
 	store  *state.Store
 	srv    *wsserver.Server
 
-	mu       sync.Mutex
-	endpoint string
+	mu                    sync.Mutex
+	endpoint              string
+	pushRegistrationToken string
 
 	trigger chan struct{}
 	subs    map[string]context.CancelFunc
@@ -49,6 +67,16 @@ func New(cfg Config) *Engine {
 	}
 	c := herdr.New(cfg.SocketPath)
 	e := &Engine{cfg: cfg, client: c, store: state.NewStore()}
+	if endpoint, err := loadPushEndpoint(cfg.PushEndpointPath); err != nil {
+		log.Printf("herdr-mobiled: load push endpoint: %v", err)
+	} else {
+		e.endpoint = endpoint
+	}
+	if token, err := loadOrCreatePushRegistrationToken(cfg.PushRegistrationTokenPath); err != nil {
+		log.Printf("herdr-mobiled: load push registration token: %v", err)
+	} else {
+		e.pushRegistrationToken = token
+	}
 	e.srv = wsserver.NewServer(wsserver.AllowAll{}, c)
 	e.srv.SetInitialSnapshot(e.store.Snapshot)
 	e.srv.SetWorkspaceSnapshot(e.store.Workspaces)
@@ -61,9 +89,138 @@ func New(cfg Config) *Engine {
 }
 
 func (e *Engine) setEndpoint(ep string) {
+	ep = strings.TrimSpace(ep)
 	e.mu.Lock()
 	e.endpoint = ep
 	e.mu.Unlock()
+	if err := savePushEndpoint(e.cfg.PushEndpointPath, ep); err != nil {
+		log.Printf("herdr-mobiled: save push endpoint: %v", err)
+	}
+}
+
+func loadPushEndpoint(path string) (string, error) {
+	if path == "" {
+		return "", nil
+	}
+	b, err := os.ReadFile(path)
+	if errors.Is(err, os.ErrNotExist) {
+		return "", nil
+	}
+	if err != nil {
+		return "", err
+	}
+	return strings.TrimSpace(string(b)), nil
+}
+
+func savePushEndpoint(path, endpoint string) error {
+	if path == "" {
+		return nil
+	}
+	if endpoint == "" {
+		if err := os.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
+			return err
+		}
+		return nil
+	}
+
+	return savePrivateValue(path, endpoint)
+}
+
+func loadOrCreatePushRegistrationToken(path string) (string, error) {
+	if path == "" {
+		return "", nil
+	}
+	if token, err := loadPushEndpoint(path); err != nil {
+		return "", err
+	} else if token != "" {
+		return token, nil
+	}
+
+	raw := make([]byte, 32)
+	if _, err := rand.Read(raw); err != nil {
+		return "", err
+	}
+	token := fmt.Sprintf("%x", raw)
+	if err := savePrivateValue(path, token); err != nil {
+		return "", err
+	}
+	return token, nil
+}
+
+func savePrivateValue(path, value string) error {
+	dir := filepath.Dir(path)
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		return err
+	}
+	tmp, err := os.CreateTemp(dir, ".push-endpoint-*")
+	if err != nil {
+		return err
+	}
+	tmpPath := tmp.Name()
+	defer os.Remove(tmpPath)
+	if err := tmp.Chmod(0o600); err != nil {
+		tmp.Close()
+		return err
+	}
+	if _, err := fmt.Fprintln(tmp, value); err != nil {
+		tmp.Close()
+		return err
+	}
+	if err := tmp.Sync(); err != nil {
+		tmp.Close()
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		return err
+	}
+	return os.Rename(tmpPath, path)
+}
+
+func (e *Engine) handlePushRegistration(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.Header().Set("Allow", http.MethodPost)
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+	if e.pushRegistrationToken == "" {
+		http.Error(w, "push registration unavailable", http.StatusServiceUnavailable)
+		return
+	}
+	presented := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+	if len(presented) != len(e.pushRegistrationToken) ||
+		subtle.ConstantTimeCompare([]byte(presented), []byte(e.pushRegistrationToken)) != 1 {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	r.Body = http.MaxBytesReader(w, r.Body, 4096)
+	var body struct {
+		Endpoint string `json:"endpoint"`
+	}
+	dec := json.NewDecoder(r.Body)
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&body); err != nil || !e.allowedPushEndpoint(body.Endpoint) {
+		http.Error(w, "invalid endpoint", http.StatusBadRequest)
+		return
+	}
+	e.setEndpoint(body.Endpoint)
+	w.WriteHeader(http.StatusNoContent)
+}
+
+func (e *Engine) allowedPushEndpoint(endpoint string) bool {
+	candidate, err := url.ParseRequestURI(strings.TrimSpace(endpoint))
+	if err != nil || candidate.User != nil || candidate.Fragment != "" || candidate.Host == "" {
+		return false
+	}
+	if candidate.Scheme != "http" && candidate.Scheme != "https" {
+		return false
+	}
+	if e.cfg.PushEndpointOrigin == "" {
+		return true
+	}
+	allowed, err := url.ParseRequestURI(e.cfg.PushEndpointOrigin)
+	return err == nil && strings.EqualFold(candidate.Scheme, allowed.Scheme) &&
+		strings.EqualFold(candidate.Host, allowed.Host)
 }
 
 // Poke requests an immediate poll (coalesced with the ticker). Used by the
@@ -88,7 +245,11 @@ func (e *Engine) Run(ctx context.Context) error {
 
 	go e.pollLoop(ctx)
 
-	httpSrv := &http.Server{Addr: e.cfg.ListenAddr, Handler: e.srv.Handler()}
+	mux := http.NewServeMux()
+	mux.HandleFunc("/notify/register", e.handlePushRegistration)
+	mux.HandleFunc("/register", e.handlePushRegistration)
+	mux.Handle("/", e.srv.Handler())
+	httpSrv := &http.Server{Addr: e.cfg.ListenAddr, Handler: mux}
 	go func() {
 		<-ctx.Done()
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)

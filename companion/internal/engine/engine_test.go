@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"errors"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -346,5 +347,40 @@ func TestPollOncePopulatesWorkspacesAndTabs(t *testing.T) {
 	tabs := e.store.Tabs()
 	if len(tabs) != 1 || tabs[0].TabID != "w7:t1" {
 		t.Fatalf("tabs not populated: %+v", tabs)
+	}
+}
+
+func TestPushEndpointPersistsAcrossEngineRestart(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "state", "push-endpoint")
+	endpoint := "https://push.example.test/secret-endpoint"
+
+	e := New(Config{PushEndpointPath: path})
+	e.setEndpoint(endpoint)
+
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := info.Mode().Perm(); got != 0o600 {
+		t.Fatalf("endpoint file mode = %o, want 600", got)
+	}
+
+	restarted := New(Config{PushEndpointPath: path})
+	restarted.mu.Lock()
+	got := restarted.endpoint
+	restarted.mu.Unlock()
+	if got != endpoint {
+		t.Fatalf("reloaded endpoint = %q, want %q", got, endpoint)
+	}
+}
+
+func TestClearingPushEndpointRemovesPersistedState(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "push-endpoint")
+	e := New(Config{PushEndpointPath: path})
+	e.setEndpoint("https://push.example.test/secret-endpoint")
+	e.setEndpoint("")
+
+	if _, err := os.Stat(path); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("endpoint state remains after clear: %v", err)
 	}
 }

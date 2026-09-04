@@ -1,10 +1,14 @@
 package com.neamkim.chatkjb.integration
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -24,11 +28,24 @@ import com.neamkim.chatkjb.features.homepage.HomepageWebScreen
 import com.neamkim.chatkjb.features.homepage.KimJbConsoleSettings
 import com.neamkim.chatkjb.features.homepage.KimJbLauncher
 import com.neamkim.chatkjb.features.herdr.EmbeddedHerdrScreen
+import com.neamkim.chatkjb.features.herdr.push.HerdrPushRegistration
+import org.unifiedpush.android.connector.UnifiedPush
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+
+		if (Build.VERSION.SDK_INT >= 33 &&
+			checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+		) {
+			registerForActivityResult(ActivityResultContracts.RequestPermission()) {}
+				.launch(Manifest.permission.POST_NOTIFICATIONS)
+		}
+		UnifiedPush.tryUseCurrentOrDefaultDistributor(this) { success ->
+			if (success) UnifiedPush.register(this)
+		}
+		HerdrPushRegistration.syncStored(applicationContext)
 
         val requestedDestination = parseDestinationIntent(intent)
         val setupFragment = intent.data
