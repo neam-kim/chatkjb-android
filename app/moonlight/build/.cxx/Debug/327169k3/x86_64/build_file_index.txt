@@ -1,0 +1,2 @@
+/Volumes/NEAM_SSD/ChatKJB-android-tab/app/moonlight/src/main/jni/Android.mk
+/Volumes/NEAM_SSD/ChatKJB-android-tab/app/moonlight/src/main/jni/Application.mk

@@ -45,8 +45,6 @@ fun HomepageWebScreen(
 ) {
     var webView by remember { mutableStateOf<WebView?>(null) }
 
-    // The WebView is created once, so a caller that swaps the entry point while
-    // this screen is up would otherwise keep showing the previous page.
     LaunchedEffect(startUrl) {
         val view = webView ?: return@LaunchedEffect
         if (HomepageRoute.isAllowed(startUrl) && view.url != startUrl) view.loadUrl(startUrl)
@@ -97,8 +95,6 @@ fun HomepageWebScreen(
                     CookieManager.getInstance().setAcceptThirdPartyCookies(this, true)
 
                     webViewClient = HomepageWebViewClient(ctx, onDestination)
-                    // Guarded so a future caller cannot widen this surface: the
-                    // WebView still only ever opens the canonical origin.
                     loadUrl(
                         if (HomepageRoute.isAllowed(startUrl)) startUrl
                         else HomepageRoute.canonicalUrl,

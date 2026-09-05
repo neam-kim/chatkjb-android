@@ -340,17 +340,11 @@ private fun terminalSessionClient(view: TerminalView): TerminalSessionClient =
         override fun onTextChanged(changedSession: TerminalSession) { view.onScreenUpdated() }
         override fun onTitleChanged(changedSession: TerminalSession) {}
         override fun onSessionFinished(finishedSession: TerminalSession) {}
-        // Select text → "Copy" routes here (via TerminalSession.onCopyTextToClipboard).
-        // Put the selected text on the system clipboard so it can be pasted anywhere.
         override fun onCopyTextToClipboard(session: TerminalSession, text: String?) {
             if (text.isNullOrEmpty()) return
             val cm = view.context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager ?: return
             cm.setPrimaryClip(ClipData.newPlainText("ChatKJB terminal", text))
         }
-        // Long-press → "Paste" routes here (via TerminalSession.onPasteTextFromClipboard).
-        // Read the system clipboard and hand it to the emulator, whose paste()
-        // normalizes the text (bracketed-paste, newline→CR) and write()s it out —
-        // for a RemoteTerminalSession that goes to Io.sendInput → the remote PTY.
         override fun onPasteTextFromClipboard(session: TerminalSession?) {
             val clip = (view.context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager)
                 ?.primaryClip ?: return
@@ -380,7 +374,7 @@ private val ArrowBrush = Brush.verticalGradient(listOf(Color.Black, Color.Black)
 private val DpadWell = Color.Black
 
 @Composable
-private fun KeyToolbar(session: RemoteTerminalSession, mods: ModifierKeys, enabled: Boolean) {
+private fun KeyToolbar(session: TerminalSession, mods: ModifierKeys, enabled: Boolean) {
     var expanded by rememberSaveable { mutableStateOf(true) }
     val ctx = LocalContext.current
     val mono = remember { FontFamily(Font("fonts/JetBrainsMono-Regular.ttf", ctx.assets)) }

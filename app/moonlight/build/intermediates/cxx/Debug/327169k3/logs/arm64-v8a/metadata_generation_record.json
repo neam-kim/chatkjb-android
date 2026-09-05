@@ -1,0 +1,17 @@
+[
+{
+  "message": "Start JSON generation. Platform version: 26 min SDK version: arm64-v8a",
+  "file": "/Volumes/NEAM_SSD/ChatKJB-android-tab/app/moonlight/src/main/jni/Android.mk",
+  "tag": "debug|arm64-v8a"
+},
+{
+  "message": "JSON \u0027/Volumes/NEAM_SSD/ChatKJB-android-tab/app/moonlight/build/.cxx/Debug/327169k3/arm64-v8a/android_gradle_build.json\u0027 was up-to-date",
+  "file": "/Volumes/NEAM_SSD/ChatKJB-android-tab/app/moonlight/src/main/jni/Android.mk",
+  "tag": "debug|arm64-v8a"
+},
+{
+  "message": "JSON generation completed without problems",
+  "file": "/Volumes/NEAM_SSD/ChatKJB-android-tab/app/moonlight/src/main/jni/Android.mk",
+  "tag": "debug|arm64-v8a"
+}
+]

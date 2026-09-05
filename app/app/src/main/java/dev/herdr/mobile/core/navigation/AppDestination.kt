@@ -6,8 +6,8 @@ import android.net.Uri
 /**
  * Top-level destinations owned by the unified ChatKJB app.
  *
- * [HOMEPAGE] and [FINANCE] are reachable only from the launcher, never from the
- * deep-link contract.
+ * [HOMEPAGE], [FINANCE], and [SERVER] are reachable only from the launcher,
+ * never from the deep-link contract.
  */
 enum class AppDestination {
     HOME,
@@ -15,6 +15,7 @@ enum class AppDestination {
     FINANCE,
     EMAIL,
     CHAT_KJB,
+    SERVER,
 }
 
 /** Fixed web surface; never accept an arbitrary URL from an intent or UI. */
@@ -23,14 +24,6 @@ object HomepageRoute {
     val uri: Uri by lazy { Uri.parse(canonicalUrl) }
     const val canonicalUrl = "https://kimjb.com/"
 
-    /**
-     * Admin-only asset view on the same origin.
-     *
-     * The site deliberately stopped listing this under Information, so the app
-     * launcher is now the entry point. The server still gates it behind the
-     * admin session, and an unauthenticated visit lands on the sign-in page that
-     * this WebView already knows how to complete.
-     */
     const val financeUrl = "https://kimjb.com/finance/"
 
     fun isAllowed(candidate: Uri): Boolean =
@@ -87,7 +80,21 @@ object HomepageRoute {
  */
 object EmailRoute {
     fun nativeLaunchIntent(): Intent = Intent(Intent.ACTION_MAIN).apply {
-        setClassName("dev.herdr.mobile", "net.thunderbird.android.MailEntryActivity")
+        setClassName("com.termux", "net.thunderbird.android.MailEntryActivity")
+    }
+}
+
+/** Real transplanted Moonlight client entry point. */
+object MoonlightRoute {
+    const val pcViewClass = "com.limelight.PcView"
+
+    data class Target(val packageName: String, val className: String)
+
+    fun target(packageName: String): Target = Target(packageName, pcViewClass)
+
+    fun launchIntent(packageName: String): Intent = Intent(Intent.ACTION_MAIN).apply {
+        val target = target(packageName)
+        setClassName(target.packageName, target.className)
     }
 }
 

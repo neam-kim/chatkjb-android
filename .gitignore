@@ -9,6 +9,10 @@
 /app/app/build/
 /app/terminal-emulator/build/
 /app/terminal-view/build/
+/vendor/termux-app/app/build/
+/vendor/termux-app/termux-shared/build/
+/vendor/termux-app/terminal-emulator/build/
+/vendor/termux-app/terminal-view/build/
 /app/local.properties
 /app/.idea/
 *.apk

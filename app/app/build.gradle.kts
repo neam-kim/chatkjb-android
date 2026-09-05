@@ -6,19 +6,44 @@ plugins {
 
 android {
     namespace = "dev.herdr.mobile"
-    compileSdk = 36
+    compileSdk = 37
+    ndkVersion = "29.0.14206865"
 
     defaultConfig {
-        applicationId = "dev.herdr.mobile"
+        applicationId = "com.termux"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 119
+        versionName = "0.119.0-chatkjb-tab"
+        manifestPlaceholders["TERMUX_PACKAGE_NAME"] = "com.termux"
+        manifestPlaceholders["TERMUX_APP_NAME"] = "Termux"
+        manifestPlaceholders["TERMUX_API_APP_NAME"] = "Termux:API"
+        manifestPlaceholders["TERMUX_BOOT_APP_NAME"] = "Termux:Boot"
+        manifestPlaceholders["TERMUX_FLOAT_APP_NAME"] = "Termux:Float"
+        manifestPlaceholders["TERMUX_STYLING_APP_NAME"] = "Termux:Styling"
+        manifestPlaceholders["TERMUX_TASKER_APP_NAME"] = "Termux:Tasker"
+        manifestPlaceholders["TERMUX_WIDGET_APP_NAME"] = "Termux:Widget"
+        ndk {
+            abiFilters += listOf("arm64-v8a")
+        }
+    }
+
+    signingConfigs {
+        create("termuxDebug") {
+            storeFile = file("../../vendor/termux-app/app/testkey_untrusted.jks")
+            storePassword = "xrj45yWGLbsO7W0v"
+            keyAlias = "alias"
+            keyPassword = "xrj45yWGLbsO7W0v"
+        }
     }
 
     buildTypes {
+        debug {
+            signingConfig = signingConfigs.getByName("termuxDebug")
+        }
         release {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("termuxDebug")
         }
     }
 
@@ -28,6 +53,7 @@ android {
     }
 
     compileOptions {
+        isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
@@ -38,13 +64,18 @@ android {
 
     packaging {
         resources {
+            excludes += "/META-INF/*.md"
             excludes += "META-INF/DEPENDENCIES"
             excludes += "META-INF/LICENSE"
             excludes += "META-INF/LICENSE.txt"
             excludes += "META-INF/NOTICE"
             excludes += "META-INF/NOTICE.txt"
         }
+        jniLibs {
+            useLegacyPackaging = true
+        }
     }
+
 }
 
 kotlin {
@@ -68,9 +99,20 @@ dependencies {
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.datastore.preferences)
     implementation(libs.unifiedpush)
-    implementation(project(":terminal-view"))
+    implementation(project(":termux-app"))
+    implementation(project(":moonlight"))
     implementation("dev.herdr.kjbmail:mail-host")
+    implementation("com.google.guava:guava:24.1-jre") {
+        version { strictly("24.1-jre") }
+    }
 
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
+    implementation("org.bouncycastle:bcprov-jdk18on:1.85.2")
+    implementation("org.bouncycastle:bcpkix-jdk18on:1.85")
+    implementation("org.jcodec:jcodec:0.2.5")
+    implementation("com.squareup.okhttp3:okhttp:5.5.0")
+    implementation("org.jmdns:jmdns:3.6.3")
+    implementation("com.github.cgutman:ShieldControllerExtensions:1.0.1")
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.okhttp.mockwebserver)

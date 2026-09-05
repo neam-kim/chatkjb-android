@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.CAPTURE_KEYBOARD" />
+    <uses-permission android:name="com.android.providers.tv.permission.READ_EPG_DATA" />
+    <uses-permission android:name="com.android.providers.tv.permission.WRITE_EPG_DATA" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" android:maxSdkVersion="33" />
+
+    <application android:allowBackup="true" android:networkSecurityConfig="@xml/network_security_config">
+        <provider
+            android:name="com.limelight.PosterContentProvider"
+            android:authorities="poster.${applicationId}"
+            android:enabled="true"
+            android:exported="true" />
+        <activity android:name="com.limelight.PcView" android:exported="false" android:resizeableActivity="true" />
+        <activity android:name="com.limelight.ShortcutTrampoline" android:exported="false" android:noHistory="true" android:resizeableActivity="true" />
+        <activity android:name="com.limelight.AppView" android:exported="false" android:resizeableActivity="true" />
+        <activity android:name="com.limelight.preferences.StreamSettings" android:exported="false" android:resizeableActivity="true" android:label="Streaming Settings" />
+        <activity android:name="com.limelight.preferences.AddComputerManually" android:exported="false" android:resizeableActivity="true" android:label="Add Computer Manually" />
+        <activity android:name="com.limelight.Game" android:exported="false" android:noHistory="true" android:supportsPictureInPicture="true" android:resizeableActivity="true" android:launchMode="singleTask" android:excludeFromRecents="true" android:theme="@style/StreamTheme" />
+        <activity android:name="com.limelight.HelpActivity" android:exported="false" android:resizeableActivity="true" />
+        <service android:name="com.limelight.discovery.DiscoveryService" android:exported="false" android:label="mDNS PC Auto-Discovery Service" />
+        <service android:name="com.limelight.computers.ComputerManagerService" android:exported="false" android:label="Computer Management Service" />
+        <service android:name="com.limelight.binding.input.driver.UsbDriverService" android:exported="false" android:label="Usb Driver Service" />
+    </application>
+</manifest>

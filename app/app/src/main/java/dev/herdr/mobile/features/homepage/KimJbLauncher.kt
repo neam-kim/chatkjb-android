@@ -9,8 +9,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
@@ -28,6 +30,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.herdr.mobile.R
+import dev.herdr.mobile.core.navigation.AppDestination
 
 internal val KimJbBackground = Color(0xFFF7F7F7)
 private val KimJbInk = Color(0xFF111111)
@@ -47,6 +50,21 @@ private val KimJbColorScheme = lightColorScheme(
     error = Color(0xFFB3261E),
 )
 
+data class LauncherEntry(
+    val title: String,
+    val description: String,
+    val destination: AppDestination,
+)
+
+/** Ordered first-screen entries; Finance follows the phone launcher source. */
+val KimJbLauncherEntries: List<LauncherEntry> = listOf(
+    LauncherEntry("Site", "Open Site", AppDestination.HOMEPAGE),
+    LauncherEntry("Email", "Open Email", AppDestination.EMAIL),
+    LauncherEntry("Finance", "Open Finance", AppDestination.FINANCE),
+    LauncherEntry("ChatKJB", "Open ChatKJB", AppDestination.CHAT_KJB),
+    LauncherEntry("Server", "Open Server", AppDestination.SERVER),
+)
+
 /**
  * Native launcher styled after kimjb.com's current homepage: light canvas,
  * centered monogram, restrained typography, and bordered white link rows.
@@ -55,10 +73,11 @@ private val KimJbColorScheme = lightColorScheme(
 @Composable
 fun KimJbLauncher(
     emailError: Boolean,
-    onHomepage: () -> Unit,
+    onSite: () -> Unit,
     onFinance: () -> Unit,
     onEmail: () -> Unit,
     onChat: () -> Unit,
+    onServer: () -> Unit,
 ) {
     MaterialTheme(colorScheme = KimJbColorScheme) {
         Surface(
@@ -75,20 +94,24 @@ fun KimJbLauncher(
             ) {
                 Image(
                     painter = painterResource(R.drawable.kimjb_logo),
-                    contentDescription = "Kim JongBeom logo",
-                    modifier = Modifier.height(72.dp),
+                    contentDescription = "ChatKJB logo",
+                    modifier = Modifier.size(72.dp),
                 )
                 Spacer(Modifier.height(12.dp))
                 Text(
-                    "Kim JongBeom",
+                    "ChatKJB",
                     color = KimJbInk,
                     fontSize = 28.sp,
                     fontWeight = FontWeight.Bold,
                     textAlign = TextAlign.Center,
                 )
                 Spacer(Modifier.height(20.dp))
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    KimJbLink(title = "Homepage", onClick = onHomepage, description = "Open Homepage")
+                Column(
+                    modifier = Modifier
+                        .widthIn(max = 520.dp)
+                        .fillMaxWidth(),
+                ) {
+                    KimJbLink(title = "Site", onClick = onSite, description = "Open Site")
                     Spacer(Modifier.height(12.dp))
                     KimJbLink(title = "Email", onClick = onEmail, description = "Open Email")
                     if (emailError) {
@@ -105,6 +128,8 @@ fun KimJbLauncher(
                     KimJbLink(title = "Finance", onClick = onFinance, description = "Open Finance")
                     Spacer(Modifier.height(12.dp))
                     KimJbLink(title = "ChatKJB", onClick = onChat, description = "Open ChatKJB")
+                    Spacer(Modifier.height(12.dp))
+                    KimJbLink(title = "Server", onClick = onServer, description = "Open Server")
                 }
             }
         }

@@ -1,0 +1,43 @@
+ChatKJB tablet verification evidence (2026-09-05)
+
+Android SDK and Compiler Configuration:
+- Official platforms;android-37.0 installed at /Users/neam/Library/Android/sdk/platforms/android-37.0.
+- Both app and moonlight modules configured with compileSdk = 37.
+- OkHttp 5.5.0 restored across app/app/build.gradle.kts and app/moonlight/build.gradle.kts (cached under /Users/neam/.gradle/caches).
+- JitPack content filter includes com.github.cgutman in app/settings.gradle.kts.
+- ANDROID_HOME set to /Users/neam/Library/Android/sdk.
+- JAVA_HOME set to OpenJDK 21 (/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home).
+
+Upstream checkout:
+- /Volumes/NEAM_SSD/moonlight-android-upstream
+- HEAD 98c12bebffac592eb57cf25e9a4638b40aa2c17d (Update to OkHttp 5.5)
+- recursive moonlight-common-c submodule: 874ac9548f1bd6f095ef2b435c42cdde460e7821
+- Transplanted modular library project :moonlight under app/moonlight with GPL notices.
+
+Phone Finance source of truth (read-only):
+- /Volumes/NEAM_SSD/ChatKJB-android/app/app/src/main/java/com/neamkim/chatkjb/core/navigation/AppDestination.kt
+  defines HomepageRoute.financeUrl = https://kimjb.com/finance/
+- /Volumes/NEAM_SSD/ChatKJB-android/app/app/src/main/java/com/neamkim/chatkjb/integration/MainActivity.kt
+  opens HomepageWebScreen with HomepageRoute.financeUrl.
+
+Tablet routing:
+- First-screen launcher entries ordered: Site, Email, Finance, ChatKJB, Server in KimJbLauncherEntries.
+- Homepage renamed to Site (KimJbLauncher.kt: onSite).
+- Finance opens HomepageWebScreen with HomepageRoute.financeUrl.
+- Server constructs an explicit in-process component intent to com.limelight.PcView under packageName (com.termux).
+- Server does not route to the management-console /server/ WebView.
+
+Herdr distinction:
+- Tablet MainActivity opens com.termux.app.TermuxActivity and uses RemoteTerminalSession.
+- Phone MainActivity uses com.neamkim.chatkjb.features.herdr.EmbeddedHerdrScreen with appassets.androidplatform.net/assets/herdr/index.html.
+- TabletRouteDistinctionTest validates this separation.
+
+Build & Execution Evidence:
+- A delegated-worker sandbox attempt could not start Gradle because that sandbox denied local TCP ServerSocket binding. This was an execution-environment limitation, not a source failure; its transcript remains in gradle-build-2026-09-05.log.
+- The Director reran `:app:testDebugUnitTest :app:assembleDebug` in the project environment under OpenJDK 21 and Android SDK 37. The complete run passed: 111 tests, zero failures, and debug APK assembly succeeded.
+- Final debug APK: app/app/build/outputs/apk/debug/app-debug.apk (92,802,571 bytes), SHA-256 `0873aac23a983b09c6c1e8f1bfc42775a36f3631f6c0a47d793b0ef9ee2fa54a`.
+- The installed primary-user base APK has the identical SHA-256 hash and a signing certificate matching the prior installed build.
+- Merged manifest: package com.termux, versionCode 119, versionName 0.119.0-chatkjb-tab.
+- Moonlight provider authority configured as poster.${applicationId} (poster.com.termux), coexisting with standalone com.limelight (poster.com.limelight).
+- Physical verification: Site loaded `https://kimjb.com/`; Finance loaded `https://kimjb.com/finance/`; Email opened `com.termux/com.fsck.k9.activity.MessageHomeActivity`; ChatKJB opened `com.termux/.app.TermuxActivity`; Server opened `com.termux/com.limelight.PcView` in process `com.termux`.
+- Standalone `com.limelight` remained installed and retained the existing `neamui-Macmini.local` host entry. No relevant crashes were recorded.

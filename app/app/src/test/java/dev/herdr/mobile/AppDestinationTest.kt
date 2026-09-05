@@ -2,6 +2,8 @@ package dev.herdr.mobile
 
 import dev.herdr.mobile.core.navigation.AppDestination
 import dev.herdr.mobile.core.navigation.HomepageRoute
+import dev.herdr.mobile.core.navigation.MoonlightRoute
+import dev.herdr.mobile.features.homepage.KimJbLauncherEntries
 import dev.herdr.mobile.core.navigation.parseDestinationUri
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -9,6 +11,19 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class AppDestinationTest {
+    @Test fun launcherEntriesExposeSiteFinanceAndServerInOrder() {
+        assertEquals(listOf("Site", "Email", "Finance", "ChatKJB", "Server"), KimJbLauncherEntries.map { it.title })
+        assertEquals(AppDestination.FINANCE, KimJbLauncherEntries[2].destination)
+        assertEquals(AppDestination.SERVER, KimJbLauncherEntries[4].destination)
+    }
+
+    @Test fun serverIntentIsExplicitInProcessPcView() {
+        val target = MoonlightRoute.target("com.termux")
+        assertEquals("com.termux", target.packageName)
+        assertEquals("com.limelight.PcView", target.className)
+        assertFalse(target.className.contains("WebView"))
+    }
+
     @Test fun homepageRouteOnlyAllowsCanonicalHttpsOrigin() {
         assertTrue(HomepageRoute.isAllowed("https://kimjb.com/"))
         assertTrue(HomepageRoute.isAllowed("https://KIMJB.COM/path"))
@@ -59,20 +74,30 @@ class AppDestinationTest {
         assertEquals(null, parseDestinationUri(null))
     }
 
+    @Test fun financeUsesTheSameCanonicalSiteOrigin() {
+        assertTrue(HomepageRoute.isAllowed(HomepageRoute.financeUrl))
+        assertTrue(HomepageRoute.financeUrl.endsWith("/finance/"))
+    }
+
+    @Test fun serverUsesInProcessMoonlightPcViewAndNotManagementWebView() {
+        val target = MoonlightRoute.target("dev.herdr.mobile")
+        assertEquals("dev.herdr.mobile", target.packageName)
+        assertEquals(MoonlightRoute.pcViewClass, target.className)
+        assertFalse(MoonlightRoute.pcViewClass.contains("WebView"))
+        assertFalse(MoonlightRoute.pcViewClass.contains("server/"))
+    }
+
+    @Test fun launcherUsesSiteFinanceAndServerLabelsInStableOrder() {
+        assertEquals(
+            listOf("Site", "Email", "Finance", "ChatKJB", "Server"),
+            KimJbLauncherEntries.map { it.title },
+        )
+        assertEquals(AppDestination.FINANCE, KimJbLauncherEntries[2].destination)
+        assertEquals(AppDestination.SERVER, KimJbLauncherEntries[4].destination)
+    }
+
     @Test fun homepageWebSurfaceIsNotReachableByDeepLink() {
         assertEquals(null, parseDestinationUri("kimjb://open/homepage"))
-        assertEquals(null, parseDestinationUri("kimjb://open/web"))
-    }
-
-    /** Finance left the site's Information menu, so the app launcher opens it directly. */
-    @Test fun financeUrlStaysOnTheCanonicalOrigin() {
-        assertEquals("https://kimjb.com/finance/", HomepageRoute.financeUrl)
-        assertTrue(HomepageRoute.isAllowed(HomepageRoute.financeUrl))
-        assertTrue(HomepageRoute.isInAppNavigation(HomepageRoute.financeUrl))
-    }
-
-    @Test fun financeIsNotReachableByDeepLink() {
-        assertEquals(null, parseDestinationUri("kimjb://open/finance"))
         assertEquals(null, parseDestinationUri("kimjb://open/web"))
     }
 

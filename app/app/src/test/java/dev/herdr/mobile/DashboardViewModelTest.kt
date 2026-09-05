@@ -19,7 +19,8 @@ class DashboardViewModelTest {
     // Per-test OkHttpClient injected into every CompanionClient so teardown can
     // force-release it. Without this, each method's client keeps its WebSocket
     // connection + dispatcher threads alive after server.shutdownQuietly(); across the
-    // full suite those leftovers starve later WS round-trips past their 3s
+    // full suite those leftovers can delay later WS round-trips while Gradle is also
+    // finishing native builds, so this integration-style test uses a wider deadline.
     // withTimeout deadlines (a cross-test flake — every method passes in
     // isolation). Mirrors the fix already applied to CompanionClientTest.
     private val http = OkHttpClient()
@@ -112,17 +113,17 @@ class DashboardViewModelTest {
         val client = CompanionClient(http)
         val vm = DashboardViewModel(client, PaneRepository())
         vm.start(server.url("/").toString().replace("http", "ws"))
-        withTimeout(3000) { while (!vm.connected.value) delay(20) }
+        withTimeout(10000) { while (!vm.connected.value) delay(20) }
 
         val errors = java.util.concurrent.CopyOnWriteArrayList<String>()
         val job = launch { vm.actionErrors.collect { errors.add(it) } }
 
         vm.renameNode("workspace", "w7", "omega3")
-        withTimeout(3000) { while (seenOps.none { it.contains("\"op\":\"rename\"") }) delay(20) }
+        withTimeout(10000) { while (seenOps.none { it.contains("\"op\":\"rename\"") }) delay(20) }
         assertTrue(seenOps.first { it.contains("rename") }.contains("\"label\":\"omega3\""))
 
         vm.closeNode("pane", "w7:p2")
-        withTimeout(3000) { while (errors.isEmpty()) delay(20) }
+        withTimeout(10000) { while (errors.isEmpty()) delay(20) }
         assertEquals("cannot close", errors.first())
 
         job.cancel()

@@ -15,6 +15,8 @@ dependencyResolutionManagement {
             mavenContent {
                 includeGroup("com.github.ByteHamster")
                 includeGroup("com.github.cketti")
+                includeGroup("com.github.cgutman")
+                includeGroup("com.termux")
             }
         }
     }
@@ -38,5 +40,13 @@ includeBuild(kjbmailDir) {
 
 
 include(":app")
+include(":moonlight")
+include(":termux-app")
+include(":termux-shared")
 include(":terminal-emulator")
 include(":terminal-view")
+
+project(":termux-app").projectDir = file("../vendor/termux-app/app")
+project(":termux-shared").projectDir = file("../vendor/termux-app/termux-shared")
+project(":terminal-emulator").projectDir = file("../vendor/termux-app/terminal-emulator")
+project(":terminal-view").projectDir = file("../vendor/termux-app/terminal-view")

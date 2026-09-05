@@ -1,19 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools">
+    xmlns:tools="http://schemas.android.com/tools"
+    android:sharedUserId="com.termux">
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
         tools:node="merge"
-        android:name="net.thunderbird.android.ThunderbirdApp"
-        android:label="Kim JongBeom"
-        android:icon="@drawable/kimjb_logo"
-        android:roundIcon="@drawable/kimjb_logo"
+        android:name=".integration.ChatKjbTabApplication"
+        android:label="ChatKJB"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
         android:theme="@style/Theme.HerdrMobile"
         android:usesCleartextTraffic="true"
         android:allowBackup="true"
-        tools:replace="android:allowBackup,android:theme,android:usesCleartextTraffic">
+        android:requestLegacyExternalStorage="true"
+        android:supportsRtl="true"
+        tools:replace="android:allowBackup,android:theme,android:usesCleartextTraffic,android:name,android:label,android:icon,android:roundIcon,android:supportsRtl">
         <activity
             android:name=".integration.MainActivity"
             android:exported="true"

@@ -1,0 +1,14 @@
+/Users/neam/Library/Android/sdk/ndk/29.0.14206865/ndk-build \
+  NDK_PROJECT_PATH=null \
+  APP_BUILD_SCRIPT=/Volumes/NEAM_SSD/ChatKJB-android-tab/app/moonlight/src/main/jni/Android.mk \
+  NDK_APPLICATION_MK=/Volumes/NEAM_SSD/ChatKJB-android-tab/app/moonlight/src/main/jni/Application.mk \
+  APP_ABI=x86 \
+  NDK_ALL_ABIS=x86 \
+  NDK_DEBUG=1 \
+  APP_PLATFORM=android-26 \
+  NDK_OUT=/Volumes/NEAM_SSD/ChatKJB-android-tab/app/moonlight/build/intermediates/cxx/Debug/327169k3/obj \
+  NDK_LIBS_OUT=/Volumes/NEAM_SSD/ChatKJB-android-tab/app/moonlight/build/intermediates/cxx/Debug/327169k3/lib \
+  APP_SHORT_COMMANDS=false \
+  LOCAL_SHORT_COMMANDS=false \
+  -B \
+  -n
