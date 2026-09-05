@@ -1,10 +1,12 @@
 # Mail feature
 
-Mail is provided by the `mail-host` module from the public KJBMail submodule at
-`KJBMail/`, pinned by the root repository. The composite build path can be
-overridden with `-Pkjbmail.dir=/path/to/KJBMail` or the `KJBMAIL_DIR` environment
-variable; an older sibling `../KJBMail/repo` checkout remains a fallback.
+Mail is provided by the repository-owned `mail-host` module under `KJBMail/`.
+The sources are ordinary tracked files, not a Git submodule. The Gradle composite
+build always resolves this internal directory; external `kjbmail.dir`,
+`KJBMAIL_DIR` and sibling-checkout fallbacks are no longer used.
 
 The host app starts `net.thunderbird.android.MailEntryActivity` through
 `core/navigation/EmailRoute.kt`. The dependency is declared in
 `app/settings.gradle.kts` and `app/app/build.gradle.kts`.
+
+See the root `docs/source-ownership.md` for source provenance and maintenance.
