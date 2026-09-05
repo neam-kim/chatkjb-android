@@ -16,7 +16,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.viewinterop.AndroidView
-import com.neamkim.chatkjb.BuildConfig
+import com.neamkim.chatkjb.core.web.configurePrivateWebContent
 import com.neamkim.chatkjb.core.navigation.ManagementConsoleRoute
 
 /** Tailnet-only WebView for one of the two fixed Mac management consoles. */
@@ -45,15 +45,9 @@ fun ManagementConsoleScreen(
                         ViewGroup.LayoutParams.MATCH_PARENT,
                     )
                     setBackgroundColor(android.graphics.Color.rgb(12, 14, 20))
-                    settings.javaScriptEnabled = true
-                    settings.domStorageEnabled = true
-                    settings.allowFileAccess = false
-                    settings.allowContentAccess = false
-                    settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_NEVER_ALLOW
-                    settings.mediaPlaybackRequiresUserGesture = true
+                    configurePrivateWebContent()
                     settings.useWideViewPort = true
                     settings.loadWithOverviewMode = false
-                    if (BuildConfig.DEBUG) WebView.setWebContentsDebuggingEnabled(true)
 
                     webViewClient = ManagementConsoleWebViewClient(startUrl)
                     loadUrl(startUrl)

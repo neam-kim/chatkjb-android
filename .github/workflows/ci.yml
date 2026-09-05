@@ -51,8 +51,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-        with:
-          submodules: recursive
 
       - uses: actions/setup-java@v4
         with:
@@ -68,9 +66,33 @@ jobs:
           path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
-          key: gradle-${{ runner.os }}-${{ hashFiles('app/**/*.gradle*', 'app/gradle/wrapper/gradle-wrapper.properties', 'app/gradle/libs.versions.toml') }}
+          key: gradle-${{ runner.os }}-${{ hashFiles('KJBMail/**/*.gradle*', 'KJBMail/gradle/*.toml', 'app/**/*.gradle*', 'app/gradle/wrapper/gradle-wrapper.properties', 'app/gradle/libs.versions.toml') }}
           restore-keys: gradle-${{ runner.os }}-
 
       - name: Unit tests + debug build
         working-directory: app
         run: ./gradlew --no-daemon :app:testDebugUnitTest :app:assembleDebug
+
+  embedded-herdr:
+    name: Embedded Herdr sources
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.4.0"
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: embedded/herdr-mobile-relay/go.mod
+          cache-dependency-path: embedded/herdr-mobile-relay/go.sum
+      - name: Verify frontend and generated Android assets
+        run: |
+          scripts/sync-embedded-herdr.sh
+          git diff --exit-code -- app/app/src/main/assets/herdr
+          test -z "$(git status --porcelain --untracked-files=all -- app/app/src/main/assets/herdr)"
+      - name: Test and build relay
+        working-directory: embedded/herdr-mobile-relay
+        run: |
+          go test ./...
+          mkdir -p bin
+          go build -o bin/herdr-mobile-relay ./cmd/herdr-mobile-relay

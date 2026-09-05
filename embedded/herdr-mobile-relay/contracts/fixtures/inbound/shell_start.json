@@ -1,0 +1,8 @@
+{
+  "type": "shell_start",
+  "protocol": 2,
+  "request_id": "shell-1",
+  "workspace_id": "w1",
+  "cwd": "/home/user/project",
+  "name": "project-shell"
+}

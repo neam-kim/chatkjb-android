@@ -1,9 +1,8 @@
 package com.neamkim.chatkjb.features.homepage
 
+import com.neamkim.chatkjb.core.web.findActivity
 import android.annotation.SuppressLint
-import android.app.Activity
 import android.content.Context
-import android.content.ContextWrapper
 import android.content.Intent
 import android.view.ViewGroup
 import android.webkit.CookieManager
@@ -148,10 +147,4 @@ private class HomepageWebViewClient(
         }
         return true
     }
-}
-
-private tailrec fun Context.findActivity(): Activity? = when (this) {
-    is Activity -> this
-    is ContextWrapper -> baseContext.findActivity()
-    else -> null
 }

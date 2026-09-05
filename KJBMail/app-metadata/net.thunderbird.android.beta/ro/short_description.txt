@@ -1,0 +1,1 @@
+KJBMail: aplicație de poștă cu cod-sursă deschis, axată pe confidențialitate

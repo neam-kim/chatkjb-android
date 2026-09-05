@@ -30,6 +30,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
+import com.neamkim.chatkjb.core.web.findActivity
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -97,6 +100,7 @@ fun KimJbLauncher(
     onServer: () -> Unit,
     onConsoleSettings: () -> Unit,
 ) {
+    LauncherStatusBar()
     MaterialTheme(colorScheme = KimJbColorScheme) {
         Surface(
             modifier = Modifier.fillMaxSize(),
@@ -165,6 +169,7 @@ fun KimJbConsoleSettings(
     onAutoBot: () -> Unit,
     onServer: () -> Unit,
 ) {
+    LauncherStatusBar()
     val context = LocalContext.current
     var skill by remember { mutableStateOf(AutomationInbox.skill(context)) }
     var sentinel by remember { mutableStateOf(AutomationInbox.sentinel(context)) }
@@ -299,6 +304,23 @@ private fun KimJbLink(
                 fontWeight = FontWeight.SemiBold,
                 textAlign = TextAlign.Center,
             )
+        }
+    }
+}
+
+/** Both native launcher surfaces stay light even when the device uses dark mode. */
+@Composable
+private fun LauncherStatusBar() {
+    val hostView = LocalView.current
+    DisposableEffect(hostView) {
+        val window = hostView.context.findActivity()?.window
+        val controller = window?.let { WindowCompat.getInsetsController(it, hostView) }
+        val previous = controller?.isAppearanceLightStatusBars
+        controller?.isAppearanceLightStatusBars = true
+        onDispose {
+            if (controller != null && previous != null) {
+                controller.isAppearanceLightStatusBars = previous
+            }
         }
     }
 }

@@ -1,0 +1,126 @@
+package transport
+
+import (
+	"context"
+	"io"
+	"log/slog"
+	"net"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/0cv/herdr-mobile-relay/internal/config"
+	"github.com/coder/websocket"
+)
+
+func TestDecodeWebSocketMessageRequiresUTF8JSONObject(t *testing.T) {
+	valid, err := decodeWebSocketMessage([]byte(`{"type":"refresh_agents"}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if valid["type"] != "refresh_agents" {
+		t.Fatalf("decoded type = %v", valid["type"])
+	}
+
+	for _, test := range []struct {
+		name string
+		data []byte
+	}{
+		{name: "null", data: []byte(`null`)},
+		{name: "array", data: []byte(`[]`)},
+		{name: "malformed", data: []byte(`{`)},
+		{name: "invalid UTF-8", data: []byte{'{', '"', 'x', '"', ':', '"', 0xff, '"', '}'}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			if _, err := decodeWebSocketMessage(test.data); err == nil {
+				t.Fatal("invalid WebSocket message was accepted")
+			}
+		})
+	}
+}
+
+func TestHubShutdownStopsOrderedIngress(t *testing.T) {
+	hub := NewHub(&config.Config{}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	if err := hub.Shutdown(ctx); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-hub.ingressDone:
+	default:
+		t.Fatal("ordered ingress goroutine remained live after shutdown")
+	}
+	if err := hub.Shutdown(ctx); err != nil {
+		t.Fatalf("second shutdown: %v", err)
+	}
+}
+
+func TestOversizedHandshakeEvictsWithoutRegistrationDeadlock(t *testing.T) {
+	hub := NewHub(&config.Config{}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	hub.SetOnConnect(func(client *ClientConn) {
+		hub.Send(client, map[string]any{
+			"type": "activity_history",
+			"data": strings.Repeat("x", clientOutboundMaxBytes+1),
+		})
+	})
+	listener, err := net.Listen("tcp4", "127.0.0.1:0")
+	if err != nil {
+		t.Skipf("local sockets unavailable: %v", err)
+	}
+	server := httptest.NewUnstartedServer(http.HandlerFunc(hub.HandleWebSocket))
+	server.Listener = listener
+	server.Start()
+	defer server.Close()
+
+	conn, _, err := websocket.Dial(context.Background(), "ws"+strings.TrimPrefix(server.URL, "http"), nil)
+	if err == nil {
+		defer conn.CloseNow()
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	if err := hub.Shutdown(ctx); err != nil {
+		t.Fatalf("shutdown after oversized handshake: %v", err)
+	}
+	if got := hub.ClientCount(); got != 0 {
+		t.Fatalf("connected clients = %d, want 0", got)
+	}
+}
+
+func TestHubNegotiatesNoContextTakeoverCompression(t *testing.T) {
+	hub := NewHub(&config.Config{}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	listener, err := net.Listen("tcp4", "127.0.0.1:0")
+	if err != nil {
+		t.Skipf("local sockets unavailable: %v", err)
+	}
+	server := httptest.NewUnstartedServer(http.HandlerFunc(hub.HandleWebSocket))
+	server.Listener = listener
+	server.Start()
+	defer server.Close()
+
+	conn, response, err := websocket.Dial(
+		context.Background(),
+		"ws"+strings.TrimPrefix(server.URL, "http"),
+		&websocket.DialOptions{CompressionMode: websocket.CompressionNoContextTakeover},
+	)
+	if err != nil {
+		t.Fatalf("dial compressed websocket: %v", err)
+	}
+	extension := response.Header.Get("Sec-WebSocket-Extensions")
+	if !strings.Contains(extension, "permessage-deflate") ||
+		!strings.Contains(extension, "client_no_context_takeover") ||
+		!strings.Contains(extension, "server_no_context_takeover") {
+		t.Fatalf("negotiated extensions = %q, want no-context permessage-deflate", extension)
+	}
+	if err := conn.Close(websocket.StatusNormalClosure, "done"); err != nil {
+		t.Fatalf("close compressed websocket: %v", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	if err := hub.Shutdown(ctx); err != nil {
+		t.Fatalf("shutdown compressed hub: %v", err)
+	}
+}

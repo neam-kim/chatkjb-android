@@ -1,0 +1,106 @@
+/*
+ * ChatKJB product skin.
+ *
+ * The upstream interaction model stays intact. This layer applies kimjb.com's
+ * quiet light canvas, strict black/white hierarchy, restrained borders, and
+ * the single red K accent without obscuring Herdr state colours.
+ */
+:root[data-theme='light'] {
+  --background: #f7f7f7;
+  --foreground: #111111;
+  --card: #ffffff;
+  --card-hover: #fafafa;
+  --muted: #555555;
+  --border: #dddddd;
+  --input: #ffffff;
+  --primary: #111111;
+  --primary-foreground: #ffffff;
+  --secondary: #f2f2f2;
+  --danger: #e31b23;
+  --success: #168552;
+  --warning: #ad6b00;
+  --trust: #4f46a5;
+  --terminal: #0b0b0b;
+  --terminal-text: #eceff4;
+  --terminal-link: #8fc7ff;
+  --terminal-link-visited: #d2b5ff;
+}
+
+:root[data-theme='light'] body {
+  letter-spacing: -0.008em;
+}
+
+:root[data-theme='light'] .app-header {
+  background: color-mix(in srgb, #f7f7f7 94%, transparent);
+  border-bottom-color: #dedede;
+  box-shadow: none;
+}
+
+:root[data-theme='light'] .header-title h1 {
+  font-weight: 760;
+  letter-spacing: -0.025em;
+}
+
+:root[data-theme='light'] .card,
+:root[data-theme='light'] .agent-card,
+:root[data-theme='light'] .workspace-card,
+:root[data-theme='light'] .activity-item,
+:root[data-theme='light'] .conversation-entry {
+  box-shadow: none;
+}
+
+:root[data-theme='light'] .card {
+  border-radius: .6rem;
+}
+
+:root[data-theme='light'] .agent-card,
+:root[data-theme='light'] .workspace-card {
+  border-radius: .55rem;
+}
+
+:root[data-theme='light'] .button {
+  border-radius: .5rem;
+  font-weight: 650;
+}
+
+:root[data-theme='light'] .button-default {
+  background: #111111;
+}
+
+:root[data-theme='light'] .button-danger {
+  background: #e31b23;
+}
+
+:root[data-theme='light'] .choice-grid button.active,
+:root[data-theme='light'] .agent-rail section > button.active,
+:root[data-theme='light'] .slash-command-menu > button.active {
+  border-color: #111111;
+  box-shadow: inset 2px 0 #e31b23;
+}
+
+.chatkjb-mark {
+  align-items: center;
+  background: #050505;
+  border-radius: 22%;
+  color: #ffffff;
+  display: inline-flex;
+  font-size: 2.2rem;
+  font-weight: 800;
+  height: 4.25rem;
+  justify-content: center;
+  letter-spacing: -.08em;
+  line-height: 1;
+  position: relative;
+  width: 4.25rem;
+}
+
+.chatkjb-mark::after {
+  background: #e31b23;
+  border-radius: 50%;
+  content: '';
+  height: .62rem;
+  position: absolute;
+  right: .46rem;
+  top: .46rem;
+  width: .62rem;
+}

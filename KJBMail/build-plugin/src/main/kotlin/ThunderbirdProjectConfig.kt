@@ -1,0 +1,18 @@
+import org.gradle.api.JavaVersion
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
+object ThunderbirdProjectConfig {
+
+    object Android {
+        const val sdkMin = 23
+
+        // Only needed for application
+        const val sdkTarget = 36
+        const val sdkCompile = 36
+    }
+
+    object Compiler {
+        val javaCompatibility = JavaVersion.VERSION_17
+        val jvmTarget = JvmTarget.JVM_17
+    }
+}

@@ -7,7 +7,8 @@ It bundles the following third-party components, each under its own license.
 
 - **Bundled output:** `app/app/src/main/assets/herdr/`
 - **Source:** [0cv/herdr-mobile-relay](https://github.com/0cv/herdr-mobile-relay), based on commit `7400537`
-- **Local source branch:** `/Volumes/NEAM_SSD/herdr-mobile-relay` branch `chatkjb-embedded`
+- **Repository-owned source:** `embedded/herdr-mobile-relay/` (frontend, relay, contracts, tests and build tooling)
+- **Imported fork commit:** `90ad7a26fb5c32b55662601c7b3b427e8de893f9` (`chatkjb-embedded`), imported 2026-09-05
 - **License:** AGPL-3.0-or-later
 - **Copyright:** © 2026 Christophe Vidal and contributors
 
@@ -49,8 +50,17 @@ Gradle version catalog (`app/gradle/libs.versions.toml`).
 - **Bundled source:** `app/app/src/main/java/com/limelight/`, `app/app/src/main/jni/`, and `app/app/src/main/res/`
 - **Source:** [moonlight-stream/moonlight-android](https://github.com/moonlight-stream/moonlight-android)
 - **Pinned commit:** `98c12bebffac592eb57cf25e9a4638b40aa2c17d` (`Update to OkHttp 5.5`), observed 2026-09-05
-- **Submodule:** `moonlight-common-c` at `874ac9548f1bd6f095ef2b435c42cdde460e7821`
+- **Vendored native source (no Git submodule required):** `moonlight-common-c` at `874ac9548f1bd6f095ef2b435c42cdde460e7821`
 - **License:** GNU GPL v3.0-or-later; upstream notices and headers are retained in the transplanted source
 - **Copyright:** Cameron Gutman, Diego Waxemberg, Aaron Neyer, and Moonlight contributors
 
 ChatKJB starts `com.limelight.PcView` in-process from the launcher’s `Server` entry while retaining the host application ID `com.neamkim.chatkjb`. The transplanted provider is namespaced to `poster.com.neamkim.chatkjb`; no `com.limelight` package or application is installed or modified on devices. The existing Herdr embedded route and the tailnet management-console routes remain separate.
+
+## KJBMail / Thunderbird for Android
+
+- **Repository-owned source:** `KJBMail/`, including Gradle convention plugins, modules, tests and resources
+- **Source:** [neam-kim/KJBMail](https://github.com/neam-kim/KJBMail), derived from Thunderbird for Android
+- **Imported commit:** `5082a97c66aa76d447ed8c5d4e5111db37cdb3ad`, imported 2026-09-05 from the previously pinned submodule
+- **License:** Apache-2.0 and component-specific notices; see `KJBMail/LICENSE`, `KJBMail/NOTICE`, and original file headers
+
+The source snapshot is unchanged by the submodule-to-directory conversion. It is now tracked by the ChatKJB repository; updates are explicit source changes reviewed and tested together with the host app.

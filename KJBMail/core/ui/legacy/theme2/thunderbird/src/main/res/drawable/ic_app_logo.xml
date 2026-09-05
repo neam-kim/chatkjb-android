@@ -1,0 +1,18 @@
+<vector
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="72dp"
+    android:height="72dp"
+    android:viewportWidth="1024"
+    android:viewportHeight="1024"
+    >
+    <!-- JB glyph, centered and scaled to fit adaptive icon safe zone -->
+    <path
+        android:pathData="M320,320 L320,704 L406.4,704 L406.4,579.2 L544,704 L661.6,704 L488.8,525.2 L652,320 L540.4,320 L402.4,480.8 L402.4,320 Z"
+        android:fillColor="#FFFFFF"
+        />
+    <!-- Red dot, moved inward for safe zone -->
+    <path
+        android:pathData="M716,288 m-60,0 a60,60 0 1,0 120,0 a60,60 0 1,0 -120,0"
+        android:fillColor="#E53935"
+        />
+</vector>

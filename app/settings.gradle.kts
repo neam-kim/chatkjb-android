@@ -23,15 +23,8 @@ dependencyResolutionManagement {
 
 rootProject.name = "ChatKJB"
 
-val kjbmailDir = sequenceOf(
-    providers.gradleProperty("kjbmail.dir").orNull,
-    System.getenv("KJBMAIL_DIR"),
-    file("../KJBMail").takeIf { it.isDirectory }?.absolutePath,
-    file("../../KJBMail/repo").takeIf { it.isDirectory }?.absolutePath,
-).filterNotNull().map(::File).firstOrNull { it.resolve("settings.gradle.kts").isFile }
-    ?: error("KJBMail source is required. Set -Pkjbmail.dir=/path/to/KJBMail, KJBMAIL_DIR, or initialize the KJBMail submodule.")
-
-includeBuild(kjbmailDir) {
+// Mail sources are owned by this repository. Never fall back to a sibling checkout.
+includeBuild("../KJBMail") {
     dependencySubstitution {
         substitute(module("dev.herdr.kjbmail:mail-host")).using(project(":mail-host"))
     }

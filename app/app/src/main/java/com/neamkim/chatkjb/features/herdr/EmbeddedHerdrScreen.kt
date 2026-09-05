@@ -1,10 +1,9 @@
 package com.neamkim.chatkjb.features.herdr
 
+import com.neamkim.chatkjb.core.web.findActivity
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.ActivityNotFoundException
-import android.content.Context
-import android.content.ContextWrapper
 import android.content.Intent
 import android.net.Uri
 import android.view.ViewGroup
@@ -27,7 +26,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.webkit.WebViewAssetLoader
-import com.neamkim.chatkjb.BuildConfig
+import com.neamkim.chatkjb.core.web.configurePrivateWebContent
 
 /**
  * The ChatKJB-skinned 0cv Herdr client rendered from assets in this APK.
@@ -77,13 +76,7 @@ fun EmbeddedHerdrScreen(
                         ViewGroup.LayoutParams.MATCH_PARENT,
                     )
                     setBackgroundColor(android.graphics.Color.rgb(247, 247, 247))
-                    settings.javaScriptEnabled = true
-                    settings.domStorageEnabled = true
-                    settings.allowFileAccess = false
-                    settings.allowContentAccess = false
-                    settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_NEVER_ALLOW
-                    settings.mediaPlaybackRequiresUserGesture = true
-                    if (BuildConfig.DEBUG) WebView.setWebContentsDebuggingEnabled(true)
+                    configurePrivateWebContent()
 
                     webViewClient = EmbeddedHerdrWebViewClient(
                         activity = context.findActivity(),
@@ -169,9 +162,3 @@ private const val TAILNET_ONLY_CSP =
         "style-src 'self' 'unsafe-inline'; script-src 'self'; " +
         "worker-src 'self' blob:; media-src 'self' data: blob:; " +
         "object-src 'none'; base-uri 'self'; form-action 'self'; frame-src 'none'"
-
-private tailrec fun Context.findActivity(): Activity? = when (this) {
-    is Activity -> this
-    is ContextWrapper -> baseContext.findActivity()
-    else -> null
-}
