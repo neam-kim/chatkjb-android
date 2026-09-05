@@ -18,6 +18,7 @@ enum class AppDestination {
     CONSOLE_SETTINGS,
     AUTOBOT,
     SERVER,
+    MOONLIGHT,
 }
 
 /** Fixed web surface; never accept an arbitrary URL from an intent or UI. */
@@ -111,6 +112,14 @@ object HerdrRoute {
     }
 }
 
+/** In-process Moonlight entry point used by the launcher Server action. */
+object MoonlightRoute {
+    const val activityClassName = "com.limelight.PcView"
+
+    fun activityClassNameFor(destination: AppDestination): String? =
+        if (destination == AppDestination.MOONLIGHT) activityClassName else null
+}
+
 /** Fixed tailnet-only management consoles exposed beside the Herdr relay. */
 object ManagementConsoleRoute {
     private const val origin = "https://neam-macmini.taild81d38.ts.net:8443"
@@ -138,7 +147,7 @@ object ManagementConsoleRoute {
 /**
  * Resolve the app's own deep-link contract.
  *
- * `kimjb://open/{home,email,chat}` is the current contract. `kjbmail://open` is the legacy
+ * `kimjb://open/{home,email,chat,notifications}` is the current contract. `kjbmail://open` is the legacy
  * entry point kimjb.com still emits; it predates this app and always meant "open mail".
  */
 private fun resolveDestination(scheme: String?, host: String?, path: String?): AppDestination? {
@@ -151,6 +160,8 @@ private fun resolveDestination(scheme: String?, host: String?, path: String?): A
         "home" -> AppDestination.HOME
         "email" -> AppDestination.EMAIL
         "chat" -> AppDestination.CHAT_KJB
+        "notifications" -> AppDestination.CONSOLE_SETTINGS
+        "server" -> AppDestination.MOONLIGHT
         else -> null
     }
 }

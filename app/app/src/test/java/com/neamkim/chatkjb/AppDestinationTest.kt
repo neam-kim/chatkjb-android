@@ -4,6 +4,8 @@ import com.neamkim.chatkjb.core.navigation.AppDestination
 import com.neamkim.chatkjb.core.navigation.HerdrRoute
 import com.neamkim.chatkjb.core.navigation.HomepageRoute
 import com.neamkim.chatkjb.core.navigation.ManagementConsoleRoute
+import com.neamkim.chatkjb.core.navigation.MoonlightRoute
+import com.neamkim.chatkjb.features.homepage.KimJbLauncherEntries
 import com.neamkim.chatkjb.core.navigation.parseDestinationUri
 import com.neamkim.chatkjb.features.homepage.KimJbConsoleEntries
 import org.junit.Assert.assertEquals
@@ -12,6 +14,22 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class AppDestinationTest {
+    @Test fun launcherEntriesAreOrderedAndServerIsMoonlight() {
+        assertEquals(
+            listOf("Site", "Email", "Finance", "ChatKJB", "Server"),
+            KimJbLauncherEntries.map { it.title },
+        )
+        assertEquals(AppDestination.MOONLIGHT, KimJbLauncherEntries.last().destination)
+        assertEquals("Open Moonlight Server", KimJbLauncherEntries.last().description)
+        assertEquals("com.limelight.PcView", MoonlightRoute.activityClassNameFor(AppDestination.MOONLIGHT))
+        assertEquals(null, MoonlightRoute.activityClassNameFor(AppDestination.SERVER))
+    }
+
+    @Test fun serverDeepLinkTargetsMoonlightActivity() {
+        assertEquals(AppDestination.MOONLIGHT, parseDestinationUri("kimjb://open/server"))
+        assertEquals("com.limelight.PcView", MoonlightRoute.activityClassName)
+    }
+
     @Test fun herdrSurfaceIsBundledInsideTheApp() {
         assertEquals(
             "https://appassets.androidplatform.net/assets/herdr/index.html",
@@ -69,6 +87,10 @@ class AppDestinationTest {
         assertEquals(AppDestination.HOME, parseDestinationUri("kimjb://open/home"))
         assertEquals(AppDestination.EMAIL, parseDestinationUri("kimjb://open/email"))
         assertEquals(AppDestination.CHAT_KJB, parseDestinationUri("kimjb://open/chat"))
+        assertEquals(
+            AppDestination.CONSOLE_SETTINGS,
+            parseDestinationUri("kimjb://open/notifications"),
+        )
         assertEquals(null, parseDestinationUri("kimjb://open/other"))
         assertEquals(null, parseDestinationUri("https://kimjb.com/"))
         assertEquals(null, parseDestinationUri(null))

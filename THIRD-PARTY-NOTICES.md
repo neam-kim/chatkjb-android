@@ -43,3 +43,14 @@ Go and Gradle dependencies (e.g. `github.com/coder/websocket`,
 `github.com/creack/pty`, AndroidX, Jetpack Compose) are fetched at build time and
 governed by their respective licenses as declared in `companion/go.mod` and the
 Gradle version catalog (`app/gradle/libs.versions.toml`).
+
+## Moonlight Android client (in-process Server entry)
+
+- **Bundled source:** `app/app/src/main/java/com/limelight/`, `app/app/src/main/jni/`, and `app/app/src/main/res/`
+- **Source:** [moonlight-stream/moonlight-android](https://github.com/moonlight-stream/moonlight-android)
+- **Pinned commit:** `98c12bebffac592eb57cf25e9a4638b40aa2c17d` (`Update to OkHttp 5.5`), observed 2026-09-05
+- **Submodule:** `moonlight-common-c` at `874ac9548f1bd6f095ef2b435c42cdde460e7821`
+- **License:** GNU GPL v3.0-or-later; upstream notices and headers are retained in the transplanted source
+- **Copyright:** Cameron Gutman, Diego Waxemberg, Aaron Neyer, and Moonlight contributors
+
+ChatKJB starts `com.limelight.PcView` in-process from the launcher’s `Server` entry while retaining the host application ID `com.neamkim.chatkjb`. The transplanted provider is namespaced to `poster.com.neamkim.chatkjb`; no `com.limelight` package or application is installed or modified on devices. The existing Herdr embedded route and the tailnet management-console routes remain separate.

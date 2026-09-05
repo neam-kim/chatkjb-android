@@ -24,6 +24,7 @@ import com.neamkim.chatkjb.core.navigation.HomepageRoute
 import com.neamkim.chatkjb.core.navigation.ManagementConsoleRoute
 import com.neamkim.chatkjb.core.navigation.parseDestinationIntent
 import com.neamkim.chatkjb.features.console.ManagementConsoleScreen
+import com.limelight.PcView
 import com.neamkim.chatkjb.features.homepage.HomepageWebScreen
 import com.neamkim.chatkjb.features.homepage.KimJbConsoleSettings
 import com.neamkim.chatkjb.features.homepage.KimJbLauncher
@@ -72,15 +73,22 @@ class MainActivity : ComponentActivity() {
                         startUrl = HerdrRoute.embeddedUrl(setupFragment),
                         onExit = { destination = null },
                     )
-                } else if (destination == AppDestination.AUTOBOT || destination == AppDestination.SERVER) {
+                } else if (destination == AppDestination.AUTOBOT) {
                     ManagementConsoleScreen(
-                        startUrl = if (destination == AppDestination.AUTOBOT) {
-                            ManagementConsoleRoute.autoBotUrl
-                        } else {
-                            ManagementConsoleRoute.serverUrl
-                        },
+                        startUrl = ManagementConsoleRoute.autoBotUrl,
                         onExit = { destination = AppDestination.CONSOLE_SETTINGS },
                     )
+                } else if (destination == AppDestination.SERVER) {
+                    ManagementConsoleScreen(
+                        startUrl = ManagementConsoleRoute.serverUrl,
+                        onExit = { destination = AppDestination.CONSOLE_SETTINGS },
+                    )
+                } else if (destination == AppDestination.MOONLIGHT) {
+                    // Launcher Server opens the transplanted Moonlight client in this process.
+                    LaunchedEffect(Unit) {
+                        startActivity(android.content.Intent(this@MainActivity, PcView::class.java))
+                        destination = null
+                    }
                 } else if (destination == AppDestination.CONSOLE_SETTINGS) {
                     KimJbConsoleSettings(
                         onAutoBot = { destination = AppDestination.AUTOBOT },
@@ -110,6 +118,7 @@ class MainActivity : ComponentActivity() {
                                 AppDestination.CONSOLE_SETTINGS,
                                 AppDestination.AUTOBOT,
                                 AppDestination.SERVER,
+                                AppDestination.MOONLIGHT,
                                 -> Unit
                             }
                         },
@@ -126,6 +135,10 @@ class MainActivity : ComponentActivity() {
                         onChat = {
                             emailError = false
                             destination = AppDestination.CHAT_KJB
+                        },
+                        onServer = {
+                            emailError = false
+                            destination = AppDestination.MOONLIGHT
                         },
                         onConsoleSettings = {
                             emailError = false

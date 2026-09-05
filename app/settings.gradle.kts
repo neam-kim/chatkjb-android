@@ -15,6 +15,7 @@ dependencyResolutionManagement {
             mavenContent {
                 includeGroup("com.github.ByteHamster")
                 includeGroup("com.github.cketti")
+                includeGroup("com.github.cgutman")
             }
         }
     }

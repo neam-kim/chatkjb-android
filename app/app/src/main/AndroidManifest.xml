@@ -3,13 +3,25 @@
     xmlns:tools="http://schemas.android.com/tools">
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.CAPTURE_KEYBOARD" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" android:maxSdkVersion="33" />
+
+    <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
+    <uses-feature android:name="android.hardware.wifi" android:required="false" />
+    <uses-feature android:name="android.hardware.gamepad" android:required="false" />
+    <uses-feature android:name="android.hardware.usb.host" android:required="false" />
+
 
     <application
         tools:node="merge"
         android:name="net.thunderbird.android.ThunderbirdApp"
         android:label="Kim JongBeom"
-        android:icon="@drawable/kimjb_logo"
-        android:roundIcon="@drawable/kimjb_logo"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
         android:theme="@style/Theme.HerdrMobile"
         android:usesCleartextTraffic="true"
         android:allowBackup="true"
@@ -36,6 +48,15 @@
             </intent-filter>
         </activity>
 
+        <!-- The Moonlight /server/ management console is intentionally separate from
+             the launcher Server action, which starts the in-process Moonlight client. -->
+        <activity
+            android:name="com.limelight.PcView"
+            android:exported="false"
+            android:resizeableActivity="true"
+            android:enableOnBackInvokedCallback="true"
+            android:configChanges="mcc|mnc|touchscreen|keyboard|keyboardHidden|navigation|screenLayout|fontScale|uiMode|orientation|screenSize|smallestScreenSize|layoutDirection" />
+
         <receiver
             android:name=".features.herdr.push.HerdrUnifiedPushReceiver"
             android:exported="true">
@@ -51,5 +72,63 @@
             android:name="net.thunderbird.app.common.MainActivity"
             tools:ignore="MissingClass"
             tools:node="remove" />
+
+        <!-- Transplanted Moonlight in-process components -->
+        <provider
+            android:name="com.limelight.PosterContentProvider"
+            android:authorities="poster.com.neamkim.chatkjb"
+            android:enabled="true"
+            android:exported="false" />
+
+        <activity
+            android:name="com.limelight.ShortcutTrampoline"
+            android:noHistory="true"
+            android:exported="false"
+            android:resizeableActivity="true"
+            android:enableOnBackInvokedCallback="true"
+            android:configChanges="mcc|mnc|locale|touchscreen|keyboard|keyboardHidden|navigation|screenLayout|fontScale|uiMode|orientation|screenSize|smallestScreenSize|layoutDirection" />
+        <activity
+            android:name="com.limelight.AppView"
+            android:exported="false"
+            android:resizeableActivity="true"
+            android:enableOnBackInvokedCallback="true"
+            android:configChanges="mcc|mnc|touchscreen|keyboard|keyboardHidden|navigation|screenLayout|fontScale|uiMode|orientation|screenSize|smallestScreenSize|layoutDirection" />
+        <activity
+            android:name="com.limelight.preferences.StreamSettings"
+            android:exported="false"
+            android:resizeableActivity="true"
+            android:enableOnBackInvokedCallback="true"
+            android:configChanges="mcc|mnc|touchscreen|keyboard|keyboardHidden|navigation|screenLayout|fontScale|uiMode|orientation|screenSize|smallestScreenSize|layoutDirection"
+            android:label="Streaming Settings" />
+        <activity
+            android:name="com.limelight.preferences.AddComputerManually"
+            android:exported="false"
+            android:resizeableActivity="true"
+            android:windowSoftInputMode="stateVisible"
+            android:enableOnBackInvokedCallback="true"
+            android:configChanges="mcc|mnc|touchscreen|keyboard|keyboardHidden|navigation|screenLayout|fontScale|uiMode|orientation|screenSize|smallestScreenSize|layoutDirection"
+            android:label="Add Computer Manually" />
+        <activity
+            android:name="com.limelight.Game"
+            android:exported="false"
+            android:configChanges="mcc|mnc|locale|touchscreen|keyboard|keyboardHidden|navigation|screenLayout|fontScale|uiMode|orientation|screenSize|smallestScreenSize|layoutDirection"
+            android:noHistory="true"
+            android:supportsPictureInPicture="true"
+            android:resizeableActivity="true"
+            android:enableOnBackInvokedCallback="false"
+            android:launchMode="singleTask"
+            android:excludeFromRecents="true"
+            android:theme="@style/StreamTheme"
+            android:preferMinimalPostProcessing="true" />
+        <activity
+            android:name="com.limelight.HelpActivity"
+            android:exported="false"
+            android:resizeableActivity="true"
+            android:enableOnBackInvokedCallback="true"
+            android:configChanges="mcc|mnc|touchscreen|keyboard|keyboardHidden|navigation|screenLayout|fontScale|uiMode|orientation|screenSize|smallestScreenSize|layoutDirection" />
+
+        <service android:name="com.limelight.discovery.DiscoveryService" android:label="mDNS PC Auto-Discovery Service" />
+        <service android:name="com.limelight.computers.ComputerManagerService" android:label="Computer Management Service" />
+        <service android:name="com.limelight.binding.input.driver.UsbDriverService" android:label="Usb Driver Service" />
     </application>
 </manifest>
