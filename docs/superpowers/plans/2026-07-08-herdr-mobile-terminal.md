@@ -1314,13 +1314,9 @@ git commit -m "feat(app): tap agent pane opens the terminal; retire quick-reply"
 
 - [ ] **Step 1: Rebuild the companion and deploy the app to the emulator**
 
-Run:
-```bash
-cd ~/ChatKJB
-go -C companion build -o ~/.local/bin/ChatKJBd ./cmd/ChatKJBd
-scripts/dev-emulator.sh --build
-```
-Expected: companion rebuilt, emulator booted, APK installed, app on the dashboard.
+Run the current variant build and user-0 installation workflow from
+`docs/device-compatibility-architecture.md`. The retired emulator helper is
+not supported and must not be executed.
 
 - [ ] **Step 2: Open omega3's terminal and verify a live render**
 

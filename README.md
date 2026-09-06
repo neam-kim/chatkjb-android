@@ -31,7 +31,7 @@ Herdr <---- Unix socket ---- 0cv relay (127.0.0.1:8375)
                      ChatKJB Android WebView
 ```
 
-ChatKJB의 Android package/applicationId는 `com.neamkim.chatkjb`입니다. 제3자 Play 스토어 앱의 `dev.herdr.mobile`과 충돌하지 않지만, ChatKJB는 그 앱을 설치하거나 실행하지 않습니다.
+ChatKJB는 공통 소스에서 두 가지 호환성 패키지를 제공합니다. 새 설치에는 `universal` (`com.termux`)을 사용하고, 기존 전화 설치의 인플레이스 업그레이드에는 `legacyPhone` (`com.neamkim.chatkjb`)를 사용합니다. 제3자 Play 스토어 앱의 `dev.herdr.mobile`과 충돌하지 않으며, ChatKJB는 그 앱을 설치하거나 실행하지 않습니다. 런타임 backend는 package가 아니라 활성 display의 최대 window metrics로 선택됩니다.
 
 ## 보안 모델과 현재 제약
 
@@ -48,13 +48,23 @@ KJBMail은 저장소 내부 composite build로 연결됩니다. WebView의 백�
 ```bash
 git clone https://github.com/neam-kim/ChatKJB.git
 cd ChatKJB/app
-ANDROID_HOME=$HOME/Android/Sdk ./gradlew :app:assembleDebug
-# app/app/build/outputs/apk/debug/app-debug.apk
+ANDROID_HOME=$HOME/Android/Sdk ./gradlew :app:assembleUniversalDebug
+# app/app/build/outputs/apk/universal/debug/app-universal-debug.apk
 
 # 물리 기기에는 반드시 primary user 0 전용 설치 guard를 사용합니다.
 # clone/work profile이 있으면 설치 전후 검증이 fail closed됩니다.
+ANDROID_HOME=$HOME/Android/Sdk ../scripts/install-android-primary-user.sh
+# optional serial when no APK path is supplied:
+ANDROID_HOME=$HOME/Android/Sdk ../scripts/install-android-primary-user.sh --serial adb-serial
+
+# 기존 legacyPhone 설치가 없는 새 기기/사용자 0에는 universal이 선택됩니다.
+# 태블릿 clone profile은 변경하지 않고 primary user 0만 명시적으로 설치합니다.
+ANDROID_HOME=$HOME/Android/Sdk ../scripts/install-android-universal-user0.sh
+
+# 기존 phone identity를 in-place 업그레이드할 때는 legacyPhone APK를 사용합니다.
+ANDROID_HOME=$HOME/Android/Sdk ./gradlew :app:assembleLegacyPhoneDebug
 ANDROID_HOME=$HOME/Android/Sdk ../scripts/install-android-primary-user.sh \
-  "$PWD/app/build/outputs/apk/debug/app-debug.apk" [adb-serial]
+  "$PWD/app/build/outputs/apk/legacyPhone/debug/app-legacyPhone-debug.apk" [adb-serial]
 ```
 
 외부 checkout과 submodule 초기화는 필요하지 않습니다. `KJBMail/`, `embedded/herdr-mobile-relay/`, Moonlight 소스가 모두 이 저장소에 포함되어 있습니다. `KJBMAIL_DIR`와 `-Pkjbmail.dir` 외부 경로 override는 더 이상 사용하지 않습니다. Maven·Bun·Go 패키지와 Android SDK는 각 lockfile·빌드 설정에 따라 별도로 설치됩니다.
@@ -62,7 +72,12 @@ ANDROID_HOME=$HOME/Android/Sdk ../scripts/install-android-primary-user.sh \
 ## 개발 및 검증
 
 ```bash
-cd app && ANDROID_HOME=$HOME/Android/Sdk ./gradlew :app:testDebugUnitTest :app:assembleDebug
+cd app && JAVA_HOME="${JAVA_HOME:?set JDK 21}" \
+  ANDROID_HOME="${ANDROID_HOME:?set Android SDK}" \
+  ./gradlew :app:testUniversalDebugUnitTest :app:testLegacyPhoneDebugUnitTest \
+  :app:assembleUniversalDebug :app:assembleLegacyPhoneDebug
+
+기기 분류는 `ChatBackendPolicy`의 순수 계약을 따릅니다. 최대 window metrics의 shortest edge가 600 dp 미만이면 embedded Herdr, 600 dp 이상이면 universal에서 native Termux를 사용합니다. `legacyPhone`이 태블릿-class로 실행되면 universal 설치 안내 화면에서 fail closed 합니다. 회전과 multi-window resize 중에는 저장된 세션 분류를 유지합니다. 자세한 설치/variant 정책은 [`docs/device-compatibility-architecture.md`](docs/device-compatibility-architecture.md)를 참조하십시오.
 ```
 
 내장 프런트엔드와 relay 소스는 `embedded/herdr-mobile-relay/`에서 관리합니다. Bun 1.4.0 이상으로 다음 명령을 실행하면 고정 lockfile로 패키지를 설치하고 lint, type check, unit tests, production build, payload size 검증을 통과한 번들만 APK assets로 복사합니다.

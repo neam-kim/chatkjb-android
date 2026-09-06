@@ -5,10 +5,14 @@
 *.out
 # Android
 /app/.gradle/
+/app/.kotlin/
 /app/build/
 /app/app/build/
-/app/terminal-emulator/build/
-/app/terminal-view/build/
+/app/app/.cxx/
+/vendor/termux-app/**/build/
+/vendor/termux-app/**/.cxx/
+/vendor/termux-app/**/.gradle/
+/vendor/termux-app/**/.externalNativeBuild/
 /app/local.properties
 /app/.idea/
 *.apk

@@ -7,7 +7,7 @@ import org.koin.android.ext.android.inject
 import org.koin.core.module.Module
 
 /** Host boundary for native KJBMail inside the unified KimJB application. */
-class ThunderbirdApp : BaseApplication() {
+open class ThunderbirdApp : BaseApplication() {
     private val telemetryManager: TelemetryManager by inject()
 
     override fun provideAppModule(): Module = appModule

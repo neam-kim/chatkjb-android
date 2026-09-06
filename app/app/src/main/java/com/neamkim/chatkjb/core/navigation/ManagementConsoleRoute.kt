@@ -13,13 +13,17 @@ object ManagementConsoleRoute {
      * tailnet endpoint. A console cannot navigate into the relay or its sibling.
      */
     fun isAllowed(candidate: String, entryUrl: String): Boolean = runCatching {
-        val candidateUri = java.net.URI(candidate).normalize()
+        if (entryUrl != autoBotUrl && entryUrl != serverUrl) return@runCatching false
+        val rawCandidate = java.net.URI(candidate)
+        val candidateUri = java.net.URI(rawCandidate.scheme, rawCandidate.authority,
+            rawCandidate.path, rawCandidate.query, rawCandidate.fragment).normalize()
         val entryUri = java.net.URI(entryUrl)
         val entryRoot = entryUri.path.takeIf { it in allowedRoots } ?: return@runCatching false
 
         candidateUri.scheme.equals("https", ignoreCase = true) &&
             candidateUri.host.equals(entryUri.host, ignoreCase = true) &&
             candidateUri.port == entryUri.port &&
+            candidateUri.userInfo == null &&
             candidateUri.path.startsWith(entryRoot)
     }.getOrDefault(false)
 }

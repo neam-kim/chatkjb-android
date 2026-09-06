@@ -47,8 +47,12 @@ jobs:
         run: go build ./...
 
   app:
-    name: App (Android)
+    name: App (Android, ${{ matrix.variant }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [Universal, LegacyPhone]
     steps:
       - uses: actions/checkout@v7
 
@@ -66,12 +70,23 @@ jobs:
           path: |
             ~/.gradle/caches
             ~/.gradle/wrapper
-          key: gradle-${{ runner.os }}-${{ hashFiles('KJBMail/**/*.gradle*', 'KJBMail/gradle/*.toml', 'app/**/*.gradle*', 'app/gradle/wrapper/gradle-wrapper.properties', 'app/gradle/libs.versions.toml') }}
+            ~/.android/build-cache
+            KJBMail/.gradle
+            vendor/termux-app/.gradle
+          key: gradle-${{ runner.os }}-${{ matrix.variant }}-${{ hashFiles('KJBMail/**/*.gradle*', 'KJBMail/**/*.gradle.kts', 'KJBMail/gradle/*.toml', 'app/**/*.gradle*', 'app/gradle/wrapper/gradle-wrapper.properties', 'app/gradle/libs.versions.toml', 'vendor/**/*.gradle*', 'vendor/**/gradle-wrapper.properties') }}
           restore-keys: gradle-${{ runner.os }}-
 
-      - name: Unit tests + debug build
+      - name: Unit tests + debug build (${{ matrix.variant }})
         working-directory: app
-        run: ./gradlew --no-daemon :app:testDebugUnitTest :app:assembleDebug
+        run: |
+          : "JAVA_HOME=${JAVA_HOME:?setup-java did not provide JAVA_HOME}"
+          export ANDROID_HOME="${ANDROID_HOME:-${ANDROID_SDK_ROOT:?setup-android did not provide an SDK path}}"
+          ./gradlew --no-daemon \
+            :app:test${{ matrix.variant }}DebugUnitTest \
+            :app:assemble${{ matrix.variant }}Debug
+
+      - name: Verify installer policy mock suite
+        run: scripts/test-installer-policy.sh
 
   embedded-herdr:
     name: Embedded Herdr sources

@@ -21,7 +21,7 @@ android {
 }
 
 dependencies {
-    implementation(projects.appCommon)
+    api(projects.appCommon)
     implementation(projects.core.ui.compose.common)
     implementation(projects.core.ui.legacy.theme2.thunderbird)
     implementation(projects.feature.launcher)
@@ -47,7 +47,7 @@ dependencies {
     implementation(projects.feature.migration.launcher.thunderbird)
     implementation(projects.feature.thundermail.api)
     implementation(projects.feature.thundermail.thunderbird)
-    implementation(libs.androidx.work.runtime)
+    api(libs.androidx.work.runtime)
 
     debugImplementation(projects.backend.demo)
     debugImplementation(projects.feature.autodiscovery.demo)

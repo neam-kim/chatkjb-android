@@ -7,12 +7,17 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import com.neamkim.chatkjb.core.navigation.AppDestination
+import com.neamkim.chatkjb.core.navigation.ChatBackend
+import com.neamkim.chatkjb.core.navigation.ChatBackendPolicy
+import com.neamkim.chatkjb.core.navigation.DeviceClass
 import com.neamkim.chatkjb.core.navigation.HerdrRoute
 import com.neamkim.chatkjb.core.navigation.HomepageRoute
 import com.neamkim.chatkjb.core.navigation.ManagementConsoleRoute
 import com.neamkim.chatkjb.features.console.ManagementConsoleScreen
+import com.neamkim.chatkjb.features.herdr.NativeBackendUnavailableScreen
 import com.neamkim.chatkjb.features.homepage.HomepageWebScreen
 import com.neamkim.chatkjb.features.homepage.KimJbConsoleSettings
 import com.neamkim.chatkjb.features.homepage.KimJbLauncher
@@ -23,18 +28,34 @@ import com.neamkim.chatkjb.features.herdr.EmbeddedHerdrScreen
 internal fun ChatKjbApp(
     requestedDestination: AppDestination?,
     setupFragment: String?,
+    routeRevision: Int,
+    deviceClass: DeviceClass,
+    nativeTermuxAvailable: Boolean,
     openEmail: () -> Boolean,
     openMoonlight: () -> Unit,
+    openTermux: () -> Unit,
     onFinish: () -> Unit,
 ) {
-    var destination by remember { mutableStateOf(requestedDestination) }
+    var destination by rememberSaveable { mutableStateOf(requestedDestination) }
+    var lastHandledRevision by rememberSaveable { mutableStateOf(routeRevision) }
     var emailError by remember { mutableStateOf(false) }
+
+    if (lastHandledRevision != routeRevision) {
+        lastHandledRevision = routeRevision
+        destination = requestedDestination
+    }
 
     LaunchedEffect(destination) {
         when (destination) {
             AppDestination.EMAIL -> {
                 destination = null
                 emailError = !openEmail()
+            }
+            AppDestination.CHAT_KJB -> {
+                if (ChatBackendPolicy.backendFor(deviceClass, nativeTermuxAvailable) == ChatBackend.NATIVE_TERMUX) {
+                    destination = null
+                    openTermux()
+                }
             }
             else -> Unit
         }
@@ -43,10 +64,20 @@ internal fun ChatKjbApp(
     MaterialTheme {
         when (destination) {
             AppDestination.CHAT_KJB -> {
-                EmbeddedHerdrScreen(
-                    startUrl = HerdrRoute.embeddedUrl(setupFragment),
-                    onExit = { destination = null },
-                )
+                when (ChatBackendPolicy.backendFor(deviceClass, nativeTermuxAvailable)) {
+                    ChatBackend.EMBEDDED_HERDR -> {
+                        EmbeddedHerdrScreen(
+                            startUrl = HerdrRoute.embeddedUrl(setupFragment),
+                            onExit = { destination = null },
+                        )
+                    }
+                    ChatBackend.UNIVERSAL_UPGRADE_REQUIRED -> {
+                        NativeBackendUnavailableScreen(
+                            onExit = { destination = null },
+                        )
+                    }
+                    ChatBackend.NATIVE_TERMUX -> Unit
+                }
             }
             AppDestination.AUTOBOT -> {
                 ManagementConsoleScreen(

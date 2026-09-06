@@ -18,17 +18,19 @@
 
     <application
         tools:node="merge"
-        android:name="net.thunderbird.android.ThunderbirdApp"
+        android:name="${chatKjbApplicationClass}"
         android:label="Kim JongBeom"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:theme="@style/Theme.HerdrMobile"
         android:usesCleartextTraffic="true"
         android:allowBackup="true"
-        tools:replace="android:allowBackup,android:theme,android:usesCleartextTraffic">
+        android:supportsRtl="true"
+        tools:replace="android:supportsRtl,android:allowBackup,android:theme,android:usesCleartextTraffic,android:name,android:label">
         <activity
             android:name=".integration.MainActivity"
             android:exported="true"
+            android:launchMode="singleTop"
             android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -47,6 +49,13 @@
                 <data android:scheme="kjbmail" android:host="open" />
             </intent-filter>
         </activity>
+
+        <!-- Compatibility target for shortcuts and pending intents created by the tablet build. -->
+        <activity-alias
+            android:name="dev.herdr.mobile.integration.MainActivity"
+            android:targetActivity=".integration.MainActivity"
+            android:enabled="true"
+            android:exported="true" />
 
         <!-- The Moonlight /server/ management console is intentionally separate from
              the launcher Server action, which starts the in-process Moonlight client. -->
@@ -76,7 +85,7 @@
         <!-- Transplanted Moonlight in-process components -->
         <provider
             android:name="com.limelight.PosterContentProvider"
-            android:authorities="poster.com.neamkim.chatkjb"
+            android:authorities="poster.${applicationId}"
             android:enabled="true"
             android:exported="false" />
 

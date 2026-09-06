@@ -3,8 +3,9 @@
 ## Android physical-device installation
 
 - Never install this app on a physical Android device with a raw `adb install -r` command.
-- Always use `scripts/install-android-primary-user.sh <apk> [adb-serial]`. It installs only for primary user 0 and fails closed when a `profile.CLONE` or `profile.MANAGED` user exists.
-- Before and after a physical-device install, verify `cmd user list -v` contains no clone or managed profile and verify `com.neamkim.chatkjb` is installed for user 0.
+- For general physical devices, use `scripts/install-android-primary-user.sh <apk> [adb-serial]`. It auto-selects the installed identity (`com.neamkim.chatkjb` for existing phone in-place upgrade, or `com.termux` universal for a new install). When installing `com.neamkim.chatkjb`, it fails closed if any `profile.CLONE` or `profile.MANAGED` user exists.
+- For tablet user-0 installations where an existing `profile.CLONE` exists and must not be altered, use the distinct procedure `scripts/install-android-universal-user0.sh <apk> [adb-serial]`. It installs only `com.termux` for user 0 and leaves the tablet clone profile intact.
+- Before and after a physical phone install of `com.neamkim.chatkjb`, verify `cmd user list -v` contains no clone or managed profile and verify `com.neamkim.chatkjb` is installed for user 0.
 - `dev.herdr.mobile` belongs to a third-party Google Play app; never install a ChatKJB APK under that package ID again.
 - Do not remove or modify Samsung Secure Folder (`profile.PRIVATE`) while enforcing this policy.
 

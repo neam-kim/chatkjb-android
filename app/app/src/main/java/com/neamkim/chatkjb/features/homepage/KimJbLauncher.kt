@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -76,8 +78,8 @@ val KimJbLauncherEntries: List<LauncherEntry> = listOf(
     LauncherEntry("Site", "Open Site", AppDestination.HOMEPAGE),
     LauncherEntry("Email", "Open Email", AppDestination.EMAIL),
     LauncherEntry("Finance", "Open Finance", AppDestination.FINANCE),
-    LauncherEntry("ChatKJB", "Open ChatKJB", AppDestination.CHAT_KJB),
     LauncherEntry("Server", "Open Moonlight Server", AppDestination.MOONLIGHT),
+    LauncherEntry("ChatKJB", "Open ChatKJB", AppDestination.CHAT_KJB),
 )
 
 val KimJbConsoleEntries: List<LauncherEntry> = listOf(
@@ -136,7 +138,7 @@ fun KimJbLauncher(
                         textAlign = TextAlign.Center,
                     )
                     Spacer(Modifier.height(20.dp))
-                    Column(modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.widthIn(max = 520.dp).fillMaxWidth()) {
                         KimJbLink(title = "Site", onClick = onHomepage, description = "Open Site")
                         Spacer(Modifier.height(12.dp))
                         KimJbLink(title = "Email", onClick = onEmail, description = "Open Email")
@@ -153,9 +155,9 @@ fun KimJbLauncher(
                         Spacer(Modifier.height(12.dp))
                         KimJbLink(title = "Finance", onClick = onFinance, description = "Open Finance")
                         Spacer(Modifier.height(12.dp))
-                        KimJbLink(title = "ChatKJB", onClick = onChat, description = "Open ChatKJB")
-                        Spacer(Modifier.height(12.dp))
                         KimJbLink(title = "Server", onClick = onServer, description = "Open Moonlight Server")
+                        Spacer(Modifier.height(12.dp))
+                        KimJbLink(title = "ChatKJB", onClick = onChat, description = "Open ChatKJB")
                     }
                 }
             }
@@ -190,6 +192,8 @@ fun KimJbConsoleSettings(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
+                    .wrapContentWidth(androidx.compose.ui.Alignment.CenterHorizontally)
+                    .widthIn(max = 568.dp)
                     .verticalScroll(rememberScrollState())
                     .padding(horizontal = 24.dp, vertical = 28.dp),
                 horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,

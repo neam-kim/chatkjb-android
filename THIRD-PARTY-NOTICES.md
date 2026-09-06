@@ -18,10 +18,9 @@ Android-embedded build. The encrypted WebSocket and Herdr protocol behavior
 remain upstream-compatible; this deployment restricts ingress to its private
 Tailscale tailnet and does not activate the optional gateway/WebRTC path.
 
-## Termux terminal emulator and view source
+## Termux app, shared runtime, terminal emulator and view
 
-- **Retained source modules (not linked into the current APK):** `app/terminal-emulator/` (`com.termux.terminal`) and
-  `app/terminal-view/` (`com.termux.view`)
+- **Repository-owned source:** `vendor/termux-app/`, including the native app, shared runtime, terminal emulator and terminal view. The universal APK includes this runtime and uses it automatically on tablet-class displays.
 - **Source:** [termux/termux-app](https://github.com/termux/termux-app)
 - **License:** GPL-3.0-only. These modules incorporate code from Jack Palevich's
   *Terminal Emulator for Android*, originally released under Apache-2.0.
@@ -30,13 +29,6 @@ Tailscale tailnet and does not activate the optional gateway/WebRTC path.
 
 GPL-3.0 and Apache-2.0 are both compatible with this project's AGPL-3.0-or-later
 license. The upstream files retain their original headers where present.
-
-## JetBrains Mono
-
-- **File:** `app/app/src/main/assets/fonts/JetBrainsMono-Regular.ttf`
-- **Source:** [JetBrains/JetBrainsMono](https://github.com/JetBrains/JetBrainsMono)
-- **License:** SIL Open Font License 1.1 — full text in
-  [`app/app/src/main/assets/fonts/OFL.txt`](app/app/src/main/assets/fonts/OFL.txt)
 
 ## Runtime dependencies
 
@@ -54,7 +46,7 @@ Gradle version catalog (`app/gradle/libs.versions.toml`).
 - **License:** GNU GPL v3.0-or-later; upstream notices and headers are retained in the transplanted source
 - **Copyright:** Cameron Gutman, Diego Waxemberg, Aaron Neyer, and Moonlight contributors
 
-ChatKJB starts `com.limelight.PcView` in-process from the launcher’s `Server` entry while retaining the host application ID `com.neamkim.chatkjb`. The transplanted provider is namespaced to `poster.com.neamkim.chatkjb`; no `com.limelight` package or application is installed or modified on devices. The existing Herdr embedded route and the tailnet management-console routes remain separate.
+ChatKJB starts `com.limelight.PcView` in-process from the launcher’s `Server` entry. Its provider uses `poster.${applicationId}` for the universal and legacy phone package identities. No standalone `com.limelight` application is required. The Herdr embedded route and tailnet management-console routes remain separate.
 
 ## KJBMail / Thunderbird for Android
 
@@ -64,3 +56,11 @@ ChatKJB starts `com.limelight.PcView` in-process from the launcher’s `Server` 
 - **License:** Apache-2.0 and component-specific notices; see `KJBMail/LICENSE`, `KJBMail/NOTICE`, and original file headers
 
 The source snapshot is unchanged by the submodule-to-directory conversion. It is now tracked by the ChatKJB repository; updates are explicit source changes reviewed and tested together with the host app.
+
+## D2Coding
+
+- **Bundled file:** `app/app/src/main/assets/fonts/D2Coding-Regular.ttf`
+- **Source:** [naver/d2-coding-font](https://github.com/naver/d2-coding-font)
+- **License:** SIL Open Font License 1.1; retained with the font in `app/app/src/main/assets/fonts/D2Coding-OFL.txt`.
+
+The native Termux host uses D2Coding and preserves the tablet Korean IME composing behavior.

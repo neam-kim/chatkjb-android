@@ -160,9 +160,9 @@ agent-name lookup needed.
   closes sessions; over-cap → `term_error`.
 - **App unit tests**: `term_*` frame (de)serialization in `Protocol.kt`
   (base64 round-trip, reqId/termId correlation).
-- **Live on the emulator harness** (`scripts/dev-emulator.sh`): open omega3's
-  terminal, confirm live render, type a command + see output, rotate/resize,
-  detach, and verify the pane survives (`pane.list`).
+- **Live validation**: use the current connected-emulator or physical-device
+  workflow documented in `docs/device-compatibility-architecture.md`; the
+  retired emulator helper is not part of the supported workflow.
 
 ## Licensing
 

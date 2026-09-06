@@ -16,11 +16,11 @@ import org.junit.Test
 class AppDestinationTest {
     @Test fun launcherEntriesAreOrderedAndServerIsMoonlight() {
         assertEquals(
-            listOf("Site", "Email", "Finance", "ChatKJB", "Server"),
+            listOf("Site", "Email", "Finance", "Server", "ChatKJB"),
             KimJbLauncherEntries.map { it.title },
         )
-        assertEquals(AppDestination.MOONLIGHT, KimJbLauncherEntries.last().destination)
-        assertEquals("Open Moonlight Server", KimJbLauncherEntries.last().description)
+        assertEquals(AppDestination.MOONLIGHT, KimJbLauncherEntries[3].destination)
+        assertEquals("Open Moonlight Server", KimJbLauncherEntries[3].description)
         assertEquals("com.limelight.PcView", MoonlightRoute.activityClassNameFor(AppDestination.MOONLIGHT))
         assertEquals(null, MoonlightRoute.activityClassNameFor(AppDestination.SERVER))
     }
@@ -94,6 +94,14 @@ class AppDestinationTest {
         assertEquals(null, parseDestinationUri("kimjb://open/other"))
         assertEquals(null, parseDestinationUri("https://kimjb.com/"))
         assertEquals(null, parseDestinationUri(null))
+    }
+
+    @Test fun chatDeepLinksReachTheSharedChatDestinationWithOrWithoutSetupFragment() {
+        assertEquals(AppDestination.CHAT_KJB, parseDestinationUri("kimjb://open/chat"))
+        assertEquals(
+            AppDestination.CHAT_KJB,
+            parseDestinationUri("kimjb://open/chat#setup=placeholder"),
+        )
     }
 
     @Test fun homepageWebSurfaceIsNotReachableByDeepLink() {

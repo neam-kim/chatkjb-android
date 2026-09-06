@@ -33,6 +33,11 @@ val pushRegistrationToken = pushRegistrationTokenPath
     ?.trim()
     .orEmpty()
 
+val universalTestKeyPassword = localOrEnvironment(
+    "universal.testKeyPassword",
+    "UNIVERSAL_TEST_KEY_PASSWORD",
+).ifBlank { "xrj45yWGLbsO7W0v" }
+
 android {
     namespace = "com.neamkim.chatkjb"
     compileSdk = 37
@@ -63,7 +68,53 @@ android {
         )
     }
 
+    signingConfigs {
+        create("universalTest") {
+            storeFile = file("../../vendor/termux-app/app/testkey_untrusted.jks")
+            storePassword = universalTestKeyPassword
+            keyAlias = "alias"
+            keyPassword = universalTestKeyPassword
+        }
+    }
+
+    flavorDimensions += "package"
+
+    productFlavors {
+        create("universal") {
+            dimension = "package"
+            applicationId = "com.termux"
+            versionCode = 120
+            versionName = "0.120.0-chatkjb"
+            buildConfigField("boolean", "NATIVE_TERMUX_AVAILABLE", "true")
+            manifestPlaceholders["chatKjbApplicationClass"] =
+                "com.neamkim.chatkjb.integration.UnifiedChatKjbApplication"
+            manifestPlaceholders["TERMUX_PACKAGE_NAME"] = "com.termux"
+            manifestPlaceholders["TERMUX_APP_NAME"] = "Termux"
+            manifestPlaceholders["TERMUX_API_APP_NAME"] = "Termux:API"
+            manifestPlaceholders["TERMUX_BOOT_APP_NAME"] = "Termux:Boot"
+            manifestPlaceholders["TERMUX_FLOAT_APP_NAME"] = "Termux:Float"
+            manifestPlaceholders["TERMUX_STYLING_APP_NAME"] = "Termux:Styling"
+            manifestPlaceholders["TERMUX_TASKER_APP_NAME"] = "Termux:Tasker"
+            manifestPlaceholders["TERMUX_WIDGET_APP_NAME"] = "Termux:Widget"
+            signingConfig = signingConfigs.getByName("universalTest")
+        }
+        create("legacyPhone") {
+            dimension = "package"
+            applicationId = "com.neamkim.chatkjb"
+            signingConfig = signingConfigs.getByName("debug")
+            versionCode = 5
+            versionName = "1.2.2"
+            buildConfigField("boolean", "NATIVE_TERMUX_AVAILABLE", "false")
+            manifestPlaceholders["chatKjbApplicationClass"] =
+                "net.thunderbird.android.ThunderbirdApp"
+        }
+    }
+
     buildTypes {
+        debug {
+            // Each package must retain its own installed signing identity.
+            signingConfig = null
+        }
         release {
             isMinifyEnabled = false
         }
@@ -119,12 +170,26 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.webkit)
+	implementation(libs.androidx.window)
 	implementation(libs.kotlinx.serialization.json)
 	implementation(libs.unifiedpush)
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.ui)
     implementation(libs.compose.material3)
     implementation("dev.herdr.kjbmail:mail-host")
+
+    // Keep common sources compilable while only universal packages Termux's
+    // activities, providers, bootstrap, and native libraries.
+    compileOnly(project(":termux-app"))
+    compileOnly(project(":termux-shared"))
+    compileOnly(project(":terminal-view"))
+    compileOnly(project(":terminal-emulator"))
+    add("universalImplementation", project(":termux-app"))
+    add("universalImplementation", "com.google.guava:guava:24.1-jre") {
+        version {
+            strictly("24.1-jre")
+        }
+    }
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)

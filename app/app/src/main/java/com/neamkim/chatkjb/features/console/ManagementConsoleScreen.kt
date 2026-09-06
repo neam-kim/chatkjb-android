@@ -1,6 +1,12 @@
 package com.neamkim.chatkjb.features.console
 
 import android.annotation.SuppressLint
+import android.app.Activity
+import android.content.Context
+import android.content.ContextWrapper
+import androidx.core.view.WindowCompat
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.runtime.DisposableEffect
 import android.view.ViewGroup
 import android.webkit.WebResourceError
 import android.webkit.WebResourceRequest
@@ -27,6 +33,19 @@ fun ManagementConsoleScreen(
     onExit: () -> Unit,
 ) {
     val webViewState = remember { mutableStateOf<WebView?>(null) }
+
+    val hostView = LocalView.current
+    DisposableEffect(hostView) {
+        val window = hostView.context.consoleActivity()?.window
+        val controller = window?.let { WindowCompat.getInsetsController(it, hostView) }
+        val previous = controller?.isAppearanceLightStatusBars
+        controller?.isAppearanceLightStatusBars = false
+        onDispose {
+            if (controller != null && previous != null) {
+                controller.isAppearanceLightStatusBars = previous
+            }
+        }
+    }
 
     BackHandler {
         val view = webViewState.value
@@ -83,4 +102,10 @@ private class ManagementConsoleWebViewClient(
             "UTF-8",
         )
     }
+}
+
+private tailrec fun Context.consoleActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.consoleActivity()
+    else -> null
 }

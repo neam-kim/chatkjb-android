@@ -23,7 +23,7 @@ welcome.
 
 ## Development
 
-Requirements: Go 1.23+, JDK 17, Android SDK (compileSdk 36).
+Requirements: Go 1.23+, JDK 21, Android SDK (compileSdk 37), and NDK 29.0.14206865.
 
 ```bash
 # Companion: build + test
@@ -32,10 +32,29 @@ go build ./...
 go test ./...
 gofmt -l .          # should print nothing
 
-# App: unit tests + debug build
+# App: both package variants, unit tests + debug builds
 cd app
-ANDROID_HOME=$HOME/Android/Sdk ./gradlew :app:testDebugUnitTest :app:assembleDebug
+JAVA_HOME="${JAVA_HOME:?set JDK 21}" \
+ANDROID_HOME="${ANDROID_HOME:?set Android SDK}" \
+./gradlew :app:testUniversalDebugUnitTest :app:testLegacyPhoneDebugUnitTest \
+  :app:assembleUniversalDebug :app:assembleLegacyPhoneDebug
 ```
+
+The `universal` (`com.termux`) artifact is the default for new installs and
+contains the native Termux runtime. The `legacyPhone`
+(`com.neamkim.chatkjb`) artifact preserves existing phone installations and
+fails closed on tablet-class windows with an upgrade prompt. Runtime selection
+uses the active display's maximum window metrics and a 600 dp shortest-edge
+boundary; package choice never acts as a user-visible mode switch. Use
+`scripts/install-android-primary-user.sh` for automatic identity selection,
+or `scripts/install-android-universal-user0.sh` for an explicit tablet
+user-0 install that leaves any clone profile untouched. Both scripts accept an
+APK file, an APK directory, or no APK path (the standard build output tree is
+used); use `--serial SERIAL` when selecting a device without an APK path. The
+package application ID is checked before installation.
+
+Run `scripts/test-installer-policy.sh` to exercise the identity/profile matrix
+with local mock `adb` and `aapt` binaries. It does not contact a device.
 
 CI runs the same Go and Android checks on every pull request; please make sure they pass
 locally first.
