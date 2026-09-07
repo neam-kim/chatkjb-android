@@ -4,6 +4,7 @@ import { parseNotificationTarget } from './protocol';
 import type { NotificationTarget } from './types';
 
 export type ViewState =
+  | { view: 'sentinel'; body: string; receivedAt: number }
   | { view: 'agents' }
   | { view: 'settings' }
   | { view: 'workspaces' }
@@ -28,6 +29,16 @@ function showView(state: ViewState): void {
 }
 
 export function stateFromLocation(locationValue: Pick<Location, 'hash'> = location): ViewState {
+  const sentinel = locationValue.hash.match(/^#sentinel=(.+)$/);
+  if (sentinel) {
+    try {
+      const target = JSON.parse(decodeURIComponent(sentinel[1].replace(/\+/g, '%20')));
+      if (/^Problem! No:[1-9][0-9]{0,14}$/.test(target.body) && Number.isSafeInteger(target.receivedAt) && target.receivedAt > 0) {
+        return { view: 'sentinel', body: target.body, receivedAt: target.receivedAt };
+      }
+    } catch { /* Invalid links cannot start a task. */ }
+    return { view: 'agents' };
+  }
   if (locationValue.hash === '#settings') return { view: 'settings' };
   if (locationValue.hash === '#workspaces') return { view: 'workspaces' };
   if (locationValue.hash === '#launch') return { view: 'launch' };
@@ -79,6 +90,7 @@ export function stateFromLocation(locationValue: Pick<Location, 'hash'> = locati
 }
 
 export function viewUrl(state: ViewState): string {
+  if (state.view === 'sentinel') return `#sentinel=${encodeURIComponent(JSON.stringify({ body: state.body, receivedAt: state.receivedAt }))}`;
   if (state.view === 'settings') return '#settings';
   if (state.view === 'workspaces') return '#workspaces';
   if (state.view === 'launch') {

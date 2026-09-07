@@ -39,7 +39,9 @@ import { constants, gzipSync } from 'node:zlib';
 // both ship in the single bootstrap bundle.
 // Raised from 128 KiB for first-class shell panes: capability-gated shell
 // creation, shell-aware controls, and raw terminal input share that bundle.
-const limitKiB = 129;
+// Raised from 129 KiB for ChatKJB Sentinel investigation, native tap admission,
+// and persistent duplicate-dispatch protection. Measured total: 133,296 B gzip.
+const limitKiB = 131;
 const limit = limitKiB * 1024;
 const root = resolve(process.argv[2] || 'dist');
 const files = ['index.html', 'assets/app.js', 'assets/app.css'];

@@ -707,14 +707,15 @@ func (c *Client) RenamePane(ctx context.Context, paneID, name string) error {
 	return c.RenameAgent(ctx, paneID, name)
 }
 
-func (c *Client) StartAgent(ctx context.Context, name, kind, paneID string, timeoutMs int) (string, error) {
+func (c *Client) StartAgent(ctx context.Context, name, kind, paneID string, timeoutMs int, nativeArgs ...string) (string, error) {
 	var result CreateResult
-	if err := c.runResult(ctx, &result,
-		"agent", "start", name,
-		"--kind", kind,
-		"--pane", paneID,
-		"--timeout", strconv.Itoa(timeoutMs),
-	); err != nil {
+	args := []string{"agent", "start", name, "--kind", kind, "--pane", paneID,
+		"--timeout", strconv.Itoa(timeoutMs)}
+	if len(nativeArgs) > 0 {
+		args = append(args, "--")
+		args = append(args, nativeArgs...)
+	}
+	if err := c.runResult(ctx, &result, args...); err != nil {
 		return "", fmt.Errorf("herdr agent start: %w", err)
 	}
 	if result.PaneID == "" {

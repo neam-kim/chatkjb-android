@@ -229,4 +229,5 @@ var Capabilities = []string{
 	"workspace_inspection",
 	"secret_input",
 	"shell_panes",
+	"sentinel_investigation",
 }

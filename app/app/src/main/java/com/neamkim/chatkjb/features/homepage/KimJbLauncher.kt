@@ -168,6 +168,7 @@ fun KimJbLauncher(
 /** Hidden console-settings destination reached only by tapping the launcher logo. */
 @Composable
 fun KimJbConsoleSettings(
+    onInvestigateSentinel: (AutomationInboxItem) -> Unit,
     onAutoBot: () -> Unit,
     onServer: () -> Unit,
 ) {
@@ -227,9 +228,11 @@ fun KimJbConsoleSettings(
                 Spacer(Modifier.height(16.dp))
                 AutomationSection(
                     title = "Sentinel",
-                    emptyText = "감지된 문제가 없습니다.",
+                    emptyText = "확인할 알림이 없습니다.",
                     item = sentinel,
                     isProblem = sentinel != null,
+                    onInvestigate = { sentinel?.let(onInvestigateSentinel) },
+                    onDone = { sentinel?.let { AutomationInbox.acknowledgeSentinel(context, it) } },
                 )
             }
         }
@@ -242,6 +245,8 @@ private fun AutomationSection(
     emptyText: String,
     item: AutomationInboxItem?,
     isProblem: Boolean,
+    onInvestigate: (() -> Unit)? = null,
+    onDone: (() -> Unit)? = null,
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
@@ -267,9 +272,26 @@ private fun AutomationSection(
                     fontSize = 15.sp,
                     fontWeight = FontWeight.SemiBold,
                 )
+                if (item != null) {
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        "수신 " + java.text.SimpleDateFormat("yyyy.MM.dd HH:mm:ss z", java.util.Locale.getDefault())
+                            .format(java.util.Date(item.updatedAt)),
+                        color = KimJbMuted, fontSize = 12.sp,
+                    )
+                }
                 item?.body?.takeIf { it.isNotBlank() }?.let { body ->
                     Spacer(Modifier.height(6.dp))
                     Text(body, color = KimJbMuted, fontSize = 14.sp, lineHeight = 20.sp)
+                }
+                if (item != null && onInvestigate != null && onDone != null) {
+                    Spacer(Modifier.height(12.dp))
+                    androidx.compose.foundation.layout.Row(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        androidx.compose.material3.Button(onClick = onInvestigate) { Text("원인 조사") }
+                        androidx.compose.material3.OutlinedButton(onClick = onDone) { Text("Done") }
+                    }
                 }
             }
         }

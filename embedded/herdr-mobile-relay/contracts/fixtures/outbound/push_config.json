@@ -22,7 +22,8 @@
     "pane_size_lease_rows",
     "workspace_inspection",
     "secret_input",
-    "shell_panes"
+    "shell_panes",
+    "sentinel_investigation"
   ],
   "inventory": {"state": "ready"},
   "agent_profiles": [

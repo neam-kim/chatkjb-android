@@ -10,6 +10,7 @@ data class AutomationInboxItem(
     val title: String,
     val body: String,
     val updatedAt: Long,
+    val paneId: String = "sentinel:current-problem",
 )
 
 object AutomationInbox {
@@ -18,13 +19,28 @@ object AutomationInbox {
     private const val SKILL = "skill"
     private val json = Json { ignoreUnknownKeys = true }
 
-    fun update(context: Context, payload: HerdrPushPayload) {
+    @Synchronized
+    fun update(context: Context, payload: HerdrPushPayload): Boolean {
+        if (payload.kind.startsWith("sentinel-") && payload.kind != "sentinel-clear" &&
+            preferences(context).getString("sentinel_ack", null) == identity(payload.kind, payload.body)) return false
         when {
             payload.kind == "sentinel-clear" -> remove(context, SENTINEL)
             payload.kind == "skill-clear" -> remove(context, SKILL)
             payload.kind.startsWith("sentinel-") -> put(context, SENTINEL, payload)
             payload.kind.startsWith("skill-") -> put(context, SKILL, payload)
         }
+        return true
+    }
+
+    private fun identity(kind: String, body: String) = "$kind\n$body"
+
+    @Synchronized
+    fun acknowledgeSentinel(context: Context, item: AutomationInboxItem) {
+        if (sentinel(context) != item) return
+        preferences(context).edit()
+            .putString("sentinel_ack", identity(item.kind, item.body))
+            .remove(SENTINEL).apply()
+        HerdrNotifications.cancel(context, item.paneId)
     }
 
     fun sentinel(context: Context): AutomationInboxItem? = get(context, SENTINEL)
@@ -39,6 +55,7 @@ object AutomationInbox {
             title = payload.title,
             body = payload.body,
             updatedAt = System.currentTimeMillis(),
+            paneId = payload.paneId,
         )
         preferences(context).edit().putString(key, json.encodeToString(item)).apply()
     }

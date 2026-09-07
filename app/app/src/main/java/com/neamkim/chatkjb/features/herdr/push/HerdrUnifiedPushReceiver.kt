@@ -13,7 +13,7 @@ class HerdrUnifiedPushReceiver : MessagingReceiver() {
 
     override fun onMessage(context: Context, message: PushMessage, instance: String) {
         parseHerdrPush(message.content)?.let { payload ->
-            AutomationInbox.update(context, payload)
+            if (!AutomationInbox.update(context, payload)) return@let
             if (payload.kind in setOf("clear", "sentinel-clear", "skill-clear")) {
                 HerdrNotifications.cancel(context, payload.paneId)
             } else {

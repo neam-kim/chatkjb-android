@@ -53,6 +53,7 @@ android {
         applicationId = "com.neamkim.chatkjb"
         minSdk = 26
         targetSdk = 36
+        testInstrumentationRunner = "com.neamkim.chatkjb.SentinelInboxInstrumentation"
         versionCode = 4
         versionName = "1.2.1"
 

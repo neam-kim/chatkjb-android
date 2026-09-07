@@ -37,6 +37,7 @@ const (
 var agentNamePattern = regexp.MustCompile(`^[a-z][a-z0-9_-]{0,31}$`)
 
 type StartRequest struct {
+	Preset      string
 	ProfileID   string
 	WorkspaceID string
 	Name        string
@@ -107,6 +108,11 @@ func NewLifecycle(client *herdr.Client, resolver *profiles.Resolver) *Lifecycle 
 }
 
 func (l *Lifecycle) ValidateStart(request StartRequest) (profiles.Profile, StartRequest, error) {
+	if request.Preset != "" {
+		if request.Preset != "sentinel-sol-high" || request.ProfileID != "codex" || request.WorkspaceID == "" || request.Cwd != "/Volumes/NEAM_SSD/security-sentinel" {
+			return profiles.Profile{}, request, errors.New("invalid Sentinel launch preset or target")
+		}
+	}
 	profile, ok := l.profiles.Profile(request.ProfileID)
 	if !ok {
 		return profiles.Profile{}, request, errors.New("profile_id is not available")
@@ -116,6 +122,19 @@ func (l *Lifecycle) ValidateStart(request StartRequest) (profiles.Profile, Start
 	}
 	if len([]rune(request.Prompt)) > promptMaxChars {
 		return profiles.Profile{}, request, errors.New("prompt exceeds maximum length")
+	}
+	// This fixed, owner-requested preset is the only external-SSD exception.
+	// Keep the generic project launcher confined to its existing home root.
+	if request.Preset == "sentinel-sol-high" {
+		resolved, err := filepath.EvalSymlinks(request.Cwd)
+		if err != nil || resolved != request.Cwd {
+			return profiles.Profile{}, request, errors.New("Sentinel canonical project is unavailable")
+		}
+		info, err := os.Stat(resolved)
+		if err != nil || !info.IsDir() {
+			return profiles.Profile{}, request, errors.New("Sentinel canonical project is unavailable")
+		}
+		return profile, request, nil
 	}
 	cwd, err := l.ResolveCwd(request.Cwd)
 	if err != nil {
@@ -163,7 +182,12 @@ func (l *Lifecycle) Start(ctx context.Context, profile profiles.Profile, request
 		return StartResult{}, err
 	}
 
-	startErr := l.startInTarget(startupCtx, profile, request.Name, target.PaneID)
+	var nativeArgs []string
+	if request.Preset == "sentinel-sol-high" {
+		profile.Kind = "codex"
+		nativeArgs = []string{"--model", "gpt-5.6-sol", "-c", `model_reasoning_effort="high"`}
+	}
+	startErr := l.startInTarget(startupCtx, profile, request.Name, target.PaneID, nativeArgs...)
 	if startErr != nil {
 		// The target stays open. Herdr created it, so closing it would destroy
 		// the workspace the user asked for and leave nothing to retry into. An
@@ -198,9 +222,9 @@ func (l *Lifecycle) createTarget(ctx context.Context, workspaceID, label, cwd st
 	return result, nil
 }
 
-func (l *Lifecycle) startInTarget(ctx context.Context, profile profiles.Profile, name, paneID string) error {
+func (l *Lifecycle) startInTarget(ctx context.Context, profile profiles.Profile, name, paneID string, nativeArgs ...string) error {
 	if profile.Kind != "" {
-		return l.startKindAgent(ctx, profile.Kind, name, paneID)
+		return l.startKindAgent(ctx, profile.Kind, name, paneID, nativeArgs...)
 	}
 	if len(profile.Argv) == 0 {
 		return errors.New("profile has no executable argv")
@@ -230,10 +254,10 @@ func (l *Lifecycle) startInTarget(ctx context.Context, profile profiles.Profile,
 // start with agent_pane_busy before its own --timeout window opens, so the
 // timeout the relay passes cannot cover it. The refusal proves nothing ran,
 // which makes the retry safe.
-func (l *Lifecycle) startKindAgent(ctx context.Context, kind, name, paneID string) error {
+func (l *Lifecycle) startKindAgent(ctx context.Context, kind, name, paneID string, nativeArgs ...string) error {
 	delay := agentStartRetryInitial
 	for {
-		_, err := l.herdr.StartAgent(ctx, name, kind, paneID, remainingTimeoutMS(ctx))
+		_, err := l.herdr.StartAgent(ctx, name, kind, paneID, remainingTimeoutMS(ctx), nativeArgs...)
 		if err == nil || !herdr.IsRefused(err) {
 			return err
 		}

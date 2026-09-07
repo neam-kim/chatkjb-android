@@ -38,6 +38,7 @@ internal fun ChatKjbApp(
 ) {
     var destination by rememberSaveable { mutableStateOf(requestedDestination) }
     var lastHandledRevision by rememberSaveable { mutableStateOf(routeRevision) }
+    var sentinelRequest by rememberSaveable { mutableStateOf<String?>(null) }
     var emailError by remember { mutableStateOf(false) }
 
     if (lastHandledRevision != routeRevision) {
@@ -62,7 +63,13 @@ internal fun ChatKjbApp(
     }
 
     MaterialTheme {
-        when (destination) {
+        if (sentinelRequest != null) {
+            EmbeddedHerdrScreen(
+                startUrl = HerdrRoute.embeddedUrl + "#sentinel=" + sentinelRequest,
+                authorizeSentinelStart = true,
+                onExit = { sentinelRequest = null },
+            )
+        } else when (destination) {
             AppDestination.CHAT_KJB -> {
                 when (ChatBackendPolicy.backendFor(deviceClass, nativeTermuxAvailable)) {
                     ChatBackend.EMBEDDED_HERDR -> {
@@ -100,6 +107,11 @@ internal fun ChatKjbApp(
             }
             AppDestination.CONSOLE_SETTINGS -> {
                 KimJbConsoleSettings(
+                    onInvestigateSentinel = { item ->
+                        val target = org.json.JSONObject()
+                            .put("body", item.body).put("receivedAt", item.updatedAt)
+                        sentinelRequest = java.net.URLEncoder.encode(target.toString(), "UTF-8")
+                    },
                     onAutoBot = { destination = AppDestination.AUTOBOT },
                     onServer = { destination = AppDestination.SERVER },
                 )

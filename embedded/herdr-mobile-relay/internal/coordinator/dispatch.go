@@ -634,6 +634,7 @@ func (d *Dispatcher) handleAcknowledge(requestID, paneID string) *CommandResult 
 
 func (d *Dispatcher) handleAgentStart(ctx context.Context, receivedAt time.Time, requestID string, message map[string]any) *CommandResult {
 	request := StartRequest{
+		Preset:      stringValue(message, "preset"),
 		ProfileID:   stringValue(message, "profile_id"),
 		WorkspaceID: stringValue(message, "workspace_id"),
 		Name:        stringValue(message, "name"),

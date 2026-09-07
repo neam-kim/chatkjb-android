@@ -41,6 +41,7 @@ import com.neamkim.chatkjb.core.web.configurePrivateWebContent
 fun EmbeddedHerdrScreen(
     startUrl: String,
     onExit: () -> Unit,
+    authorizeSentinelStart: Boolean = false,
 ) {
     val webViewState = remember { mutableStateOf<WebView?>(null) }
     val fileCallbackState = remember { mutableStateOf<ValueCallback<Array<Uri>>?>(null) }
@@ -81,6 +82,7 @@ fun EmbeddedHerdrScreen(
                     webViewClient = EmbeddedHerdrWebViewClient(
                         activity = context.findActivity(),
                         assetLoader = assetLoader,
+                        authorizeSentinelStart = authorizeSentinelStart,
                     )
                     webChromeClient = object : WebChromeClient() {
                         override fun onShowFileChooser(
@@ -118,7 +120,22 @@ fun EmbeddedHerdrScreen(
 private class EmbeddedHerdrWebViewClient(
     private val activity: Activity?,
     private val assetLoader: WebViewAssetLoader,
+    private val authorizeSentinelStart: Boolean,
 ) : WebViewClient() {
+    private var sentinelStartGranted = false
+
+    override fun onPageFinished(view: WebView, url: String) {
+        if (authorizeSentinelStart && !sentinelStartGranted && url.startsWith(
+                "https://appassets.androidplatform.net/assets/herdr/index.html#sentinel=",
+            )) {
+            sentinelStartGranted = true
+            view.evaluateJavascript(
+                "window.__chatkjbSentinelStart = true; window.dispatchEvent(new Event('chatkjb-sentinel-start'));",
+                null,
+            )
+        }
+    }
+
     override fun shouldInterceptRequest(
         view: WebView,
         request: WebResourceRequest,

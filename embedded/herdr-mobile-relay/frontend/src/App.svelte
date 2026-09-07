@@ -6,6 +6,7 @@
   import AgentList from '$components/AgentList.svelte';
   import AgentRail from '$components/AgentRail.svelte';
   import ConversationHistory from '$components/ConversationHistory.svelte';
+  import SentinelInvestigation from '$components/SentinelInvestigation.svelte';
   import LaunchView from '$components/LaunchView.svelte';
   import GlobalJump from '$components/GlobalJump.svelte';
   import LockScreen from '$components/LockScreen.svelte';
@@ -124,6 +125,7 @@
   const headerTitle = $derived.by(() => {
     if ($currentView.view === 'settings') return 'Settings';
     if ($currentView.view === 'workspaces') return 'Workspaces';
+    if ($currentView.view === 'sentinel') return 'Sentinel';
     if ($currentView.view === 'launch') return 'Start Agent';
     if ($currentView.view === 'activity') return 'Activity';
     if ($currentView.view === 'activity_detail') return 'Activity';
@@ -557,6 +559,8 @@
     <SettingsView />
   {:else if $currentView.view === 'workspaces'}
     <WorkspaceManager />
+  {:else if $currentView.view === 'sentinel'}
+    <SentinelInvestigation body={$currentView.body} receivedAt={$currentView.receivedAt} />
   {:else if $currentView.view === 'launch'}
     <LaunchView
       relayId={$currentView.relayId}
