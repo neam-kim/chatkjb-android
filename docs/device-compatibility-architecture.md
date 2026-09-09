@@ -8,8 +8,9 @@ Two package variants support seamless updates without data loss:
 
 1. **`universal` (`com.termux`)**:
    - Default artifact for new installs on any device.
-   - Version code `>= 119`, version name `0.120.0-chatkjb`.
+   - Version code `>= 119`, version name `0.120.1-chatkjb`.
    - Signed with the established tablet test key (`testkey_untrusted.jks`).
+   - Universal targetSdk is 28 so Termux can exec PREFIX login; 29+ fails with Permission denied on Android 10+.
    - Includes the Termux app runtime, terminal emulator/view modules, D2Coding monospace font asset, and Korean IME composing preview support.
    - Supports both runtime backends (embedded Herdr and native Termux).
 

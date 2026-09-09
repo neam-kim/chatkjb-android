@@ -84,8 +84,9 @@ android {
         create("universal") {
             dimension = "package"
             applicationId = "com.termux"
-            versionCode = 120
-            versionName = "0.120.0-chatkjb"
+            versionCode = 121
+            versionName = "0.120.1-chatkjb"
+            targetSdk = 28  // Termux PREFIX exec fails on 29+
             buildConfigField("boolean", "NATIVE_TERMUX_AVAILABLE", "true")
             manifestPlaceholders["chatKjbApplicationClass"] =
                 "com.neamkim.chatkjb.integration.UnifiedChatKjbApplication"

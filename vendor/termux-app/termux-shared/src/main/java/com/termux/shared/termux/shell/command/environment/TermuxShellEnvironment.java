@@ -90,6 +90,11 @@ public class TermuxShellEnvironment extends AndroidShellEnvironment {
                 environment.put(ENV_PATH, TermuxConstants.TERMUX_BIN_PREFIX_DIR_PATH);
                 environment.remove(ENV_LD_LIBRARY_PATH);
             }
+            java.io.File preload = new java.io.File(TermuxConstants.TERMUX_LIB_PREFIX_DIR_PATH, "libtermux-exec-ld-preload.so");
+            if (preload.isFile()) {
+                environment.put("LD_PRELOAD", preload.getAbsolutePath());
+                environment.put("TERMUX_EXEC__SYSTEM_LINKER_EXEC__MODE", "1");
+            }
         }
 
         return environment;

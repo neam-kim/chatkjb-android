@@ -43,32 +43,12 @@ public class TermuxShellUtils {
                 if (bytesRead > 4) {
                     if (buffer[0] == 0x7F && buffer[1] == 'E' && buffer[2] == 'L' && buffer[3] == 'F') {
                         // Elf file, do nothing.
-                    } else if (buffer[0] == '#' && buffer[1] == '!') {
-                        // Try to parse shebang.
-                        StringBuilder builder = new StringBuilder();
-                        for (int i = 2; i < bytesRead; i++) {
-                            char c = (char) buffer[i];
-                            if (c == ' ' || c == '\n') {
-                                if (builder.length() == 0) {
-                                    // Skip whitespace after shebang.
-                                } else {
-                                    // End of shebang.
-                                    String shebangExecutable = builder.toString();
-                                    if (shebangExecutable.startsWith("/usr") || shebangExecutable.startsWith("/bin")) {
-                                        String[] parts = shebangExecutable.split("/");
-                                        String binary = parts[parts.length - 1];
-                                        interpreter = TermuxConstants.TERMUX_BIN_PREFIX_DIR_PATH + "/" + binary;
-                                    }
-                                    break;
-                                }
-                            } else {
-                                builder.append(c);
-                            }
-                        }
                     } else {
-                        // No shebang and no ELF, use standard shell.
-                        interpreter = TermuxConstants.TERMUX_BIN_PREFIX_DIR_PATH + "/sh";
+                        // App-data scripts cannot be execve()'d by untrusted_app on current Android.
+                        // Read them with the system shell instead of PREFIX /bin/sh.
+                        interpreter = "/system/bin/sh";
                     }
+
                 }
             }
         } catch (IOException e) {
